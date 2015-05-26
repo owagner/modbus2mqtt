@@ -24,7 +24,7 @@ import modbus_tk
 import modbus_tk.defines as cst
 from modbus_tk import modbus_rtu
 
-version="0.2"
+version="0.3"
 
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
@@ -32,9 +32,9 @@ parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server p
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
 parser.add_argument('--rtu', help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
-parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even.')
-parser.add_argument('--registers', required=True, help='Register specification file. Must be specified')
-parser.add_argument('--log', help='set log level to the specified value. Defaults to WARNING. Try DEBUG for maximum detail')
+parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
+parser.add_argument('--registers', required=True, help='Register definition file. Required!')
+parser.add_argument('--log', help='set log level to the specified value. Defaults to WARNING. Use DEBUG for maximum detail')
 parser.add_argument('--syslog', action='store_true', help='enable logging to syslog')
 args=parser.parse_args()
 
@@ -57,7 +57,7 @@ class Register:
 		self.functioncode=int(functioncode)
 		self.register=int(register)
 		self.size=int(size)
-		self.format=format
+		self.format=format.split(":",2)
 		self.next_due=0
 		self.lastval=None
 
@@ -68,12 +68,14 @@ class Register:
 			
 	def poll(self):
 		try:
-			res=master.execute(self.slaveid,self.functioncode,self.register,self.size,data_format=self.format)
-			if res[0]!=self.lastval:
-				self.lastval=res[0]
+			res=master.execute(self.slaveid,self.functioncode,self.register,self.size,data_format=self.format[0])
+			r=res[0]
+			if self.format[1]:
+				r=self.format[1] % r
+			if r!=self.lastval:
+				self.lastval=r
 				fulltopic=topic+"status/"+self.topic
 				mqc.publish(fulltopic,self.lastval,qos=0,retain=True)
-
 		except modbus_tk.modbus.ModbusError as exc:
 			logging.error("Error reading "+self.topic+": Slave returned %s - %s", exc, exc.get_exception_code())
 		except Exception as exc:

@@ -48,6 +48,7 @@ Command line options
                             WARNING. Try DEBUG for maximum detail
       --syslog              enable logging to syslog
 
+      
 Register definition
 -------------------
 The Modbus registers which are to be polled are defined in a CSV file with
@@ -61,10 +62,15 @@ the following columns:
 * *Size (in words)*
   The register size in words.
 * *Format*
-  The format how to interpret the register value. Uses the Python
+  The format how to interpret the register value. This can be two parts, split
+  by a ":" character.
+  The first part uses the Python
   "struct" module notation. Common examples:
     - >H unsigned short
     - >f float
+  The second part is optional and specifies a Python format string, e.g.
+      %.2f
+  to format the value to two decimal digits.
 * *Polling frequency*
     How often the register is to be polled, in seconds. Only integers.
 * *SlaveID*
@@ -77,9 +83,22 @@ Not all columns need to be specified. Unspecified columns take their
 default values. The default values for subsequent rows can be set
 by specifying a magic topic suffix of *DEFAULT*
 
+Topics
+------
+Values are published as simple strings to topics with the general <prefix>,
+the function code "/status/" and the topic suffix specified per register.
+A value will only be published if it's textual representation has changed,
+e.g. _after_ formatting has been applied. The published MQTT messages have
+the retain flag set.
+
+A special topic "<prefix>/connected" is maintained. 
+It's a enum stating whether the module is currently running and connected to 
+the broker (1) and to the Modbus interface (2).
 
 Changelog
 ---------
+* 0.3 - 2015/05/26 - owagner
+  - support optional string format specification
 * 0.2 - 2015/05/26 - owagner
   - added "--rtu-parity" option to set the parity for RTU serial communication. Defaults to "even",
     to be inline with Modbus specification
