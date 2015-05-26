@@ -22,30 +22,56 @@ Dependencies
 * modbus-tk for Modbus communication - https://github.com/ljean/modbus-tk/
 
 
+Command line options
+--------------------
+    usage: modbus2mqtt.py [-h] [--mqtt-host MQTT_HOST] [--mqtt-port MQTT_PORT]
+                          [--mqtt-topic MQTT_TOPIC] [--rtu RTU]
+                          [--rtu-baud RTU_BAUD] [--rtu-parity {even,odd,none}]
+                          --registers REGISTERS [--log LOG] [--syslog]
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      --mqtt-host MQTT_HOST
+                            MQTT server address. Defaults to "localhost"
+      --mqtt-port MQTT_PORT
+                            MQTT server port. Defaults to 1883
+      --mqtt-topic MQTT_TOPIC
+                            Topic prefix to be used for subscribing/publishing.
+                            Defaults to "modbus/"
+      --rtu RTU             pyserial URL (or port name) for RTU serial port
+      --rtu-baud RTU_BAUD   Baud rate for serial port. Defaults to 19200
+      --rtu-parity {even,odd,none}
+                            Parity for serial port. Defaults to even.
+      --registers REGISTERS
+                            Register specification file. Must be specified
+      --log LOG             set log level to the specified value. Defaults to
+                            WARNING. Try DEBUG for maximum detail
+      --syslog              enable logging to syslog
+
 Register definition
 -------------------
 The Modbus registers which are to be polled are defined in a CSV file with
 the following columns:
 
-* Topic suffix
-    The topic where the respective register will be published into. Will
-    be prefixed with the global topic prefix and "status/".
-* Register offset
-    The register number, depending on the function code. Zero-based.
-* Size (in words)
-    The register size in words.
-* Format
-    The format how to interpret the register value. Uses the Python
-    "struct" module notation. Common examples:
-      - >H unsigned short
-      - >f float
-* Polling frequency
+* *Topic suffix*
+  The topic where the respective register will be published into. Will
+  be prefixed with the global topic prefix and "status/".
+* *Register offset*
+  The register number, depending on the function code. Zero-based.
+* *Size (in words)*
+  The register size in words.
+* *Format*
+  The format how to interpret the register value. Uses the Python
+  "struct" module notation. Common examples:
+    - >H unsigned short
+    - >f float
+* *Polling frequency*
     How often the register is to be polled, in seconds. Only integers.
-* SlaveID
+* *SlaveID*
     The Modbus address of the slave to query. Defaults to 1.
-* FunctionCode
-    The Modbus function code to use for querying the register. Defaults
-    to 4 (READ REGISTER). Only change if you know what you are doing.
+* *FunctionCode*
+  The Modbus function code to use for querying the register. Defaults
+  to 4 (READ REGISTER). Only change if you know what you are doing.
 
 Not all columns need to be specified. Unspecified columns take their
 default values. The default values for subsequent rows can be set
