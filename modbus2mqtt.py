@@ -13,25 +13,26 @@ import argparse
 import logging
 import logging.handlers
 import time
-import json
 import socket
 import paho.mqtt.client as mqtt
 import serial
 import io
+import sys
 import csv
 
 import modbus_tk
 import modbus_tk.defines as cst
 from modbus_tk import modbus_rtu
 
-version="0.1"
+version="0.2"
 
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
 parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server port. Defaults to 1883')
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
 parser.add_argument('--rtu', help='pyserial URL (or port name) for RTU serial port')
-parser.add_argument('--rtu-baud', default='2400', type=int, help='Baud rate for serial port. Defaults to 2400')
+parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
+parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even.')
 parser.add_argument('--registers', required=True, help='Register specification file. Must be specified')
 parser.add_argument('--log', help='set log level to the specified value. Defaults to WARNING. Try DEBUG for maximum detail')
 parser.add_argument('--syslog', action='store_true', help='enable logging to syslog')
@@ -132,9 +133,12 @@ mqc.publish(topic+"connected",1,qos=1,retain=True)
 mqc.loop_start()
 
 if args.rtu:
-	master=modbus_rtu.RtuMaster(serial.serial_for_url(args.rtu,baudrate=args.rtu_baud))
+	master=modbus_rtu.RtuMaster(serial.serial_for_url(args.rtu,baudrate=args.rtu_baud,parity=args.rtu_parity[0].upper()))
 	master.set_timeout(5.0)
 	master.set_verbose(True)
+else:
+        logging.error("You must specify a modbus access method")
+        sys.exit(1)
 
 mqc.publish(topic+"connected",2,qos=1,retain=True)
 
