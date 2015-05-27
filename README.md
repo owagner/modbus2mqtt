@@ -68,6 +68,7 @@ the following columns:
   "struct" module notation. Common examples:
     - >H unsigned short
     - >f float
+  
   The second part is optional and specifies a Python format string, e.g.
       %.2f
   to format the value to two decimal digits.
