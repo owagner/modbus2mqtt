@@ -104,7 +104,7 @@ A special topic "<prefix>/connected" is maintained.
 It's a enum stating whether the module is currently running and connected to 
 the broker (1) and to the Modbus interface (2).
 
-Setting Modbus registers (FC=5) and coils (FC=6)
+Setting Modbus coils (FC=5) and registers (FC=6)
 ------------------------------------------------
 
 modbus2mqtt subscibes to two topics:
