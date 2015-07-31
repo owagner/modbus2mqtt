@@ -98,6 +98,14 @@ the broker (1) and to the Modbus interface (2).
 
 Changelog
 ---------
+* 0.4 - 2015/07/31 - nzfarmer
+  - added support for MQTT subscribe + Mobdus write
+    Topics are of the form: prefix/set/<slaveid (0:255)>/<fc (5,6)>/<register>  (payload = value to write)
+  - modified polling method (used loop not loop_start and separate thread) and added support for disconnects
+  - added CNTL-C for controlled exit
+  - added --clientid for MQTT connections
+  - added --force to repost register values regardless of change every x seconds where x >0
+	
 * 0.3 - 2015/05/26 - owagner
   - support optional string format specification
 * 0.2 - 2015/05/26 - owagner
