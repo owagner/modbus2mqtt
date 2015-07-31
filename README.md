@@ -38,12 +38,20 @@ Command line options
       --mqtt-topic MQTT_TOPIC
                             Topic prefix to be used for subscribing/publishing.
                             Defaults to "modbus/"
+      --clientid MQTT_CLIENT_ID
+			    optional prefix for MQTT Client ID
+
       --rtu RTU             pyserial URL (or port name) for RTU serial port
       --rtu-baud RTU_BAUD   Baud rate for serial port. Defaults to 19200
       --rtu-parity {even,odd,none}
                             Parity for serial port. Defaults to even.
       --registers REGISTERS
                             Register specification file. Must be specified
+      --force FORCE	    
+			    optional interval (secs) to publish existing values
+                            does not override a register's poll interval.
+			    Defaults to 0 (publish only on change).
+				
       --log LOG             set log level to the specified value. Defaults to
                             WARNING. Try DEBUG for maximum detail
       --syslog              enable logging to syslog
@@ -95,6 +103,17 @@ the retain flag set.
 A special topic "<prefix>/connected" is maintained. 
 It's a enum stating whether the module is currently running and connected to 
 the broker (1) and to the Modbus interface (2).
+
+Setting Modbus registers (FC=5) and coils (FC=6)
+------------------------------------------------
+
+modbus2mqtt subscibes to two topics:
+
+prefix/set/+/5/+  # where the first + is the slaveId and the second is the register
+prefix/set/+/6/+  # payload values are written the the devices (assumes 16bit Int)
+
+There is only limited sanity checking currently on the payload values.
+
 
 Changelog
 ---------
