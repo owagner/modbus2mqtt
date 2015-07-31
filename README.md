@@ -39,7 +39,7 @@ Command line options
                             Topic prefix to be used for subscribing/publishing.
                             Defaults to "modbus/"
       --clientid MQTT_CLIENT_ID
-			    optional prefix for MQTT Client ID
+                            optional prefix for MQTT Client ID
 
       --rtu RTU             pyserial URL (or port name) for RTU serial port
       --rtu-baud RTU_BAUD   Baud rate for serial port. Defaults to 19200
@@ -48,9 +48,9 @@ Command line options
       --registers REGISTERS
                             Register specification file. Must be specified
       --force FORCE	    
-			    optional interval (secs) to publish existing values
+                            optional interval (secs) to publish existing values
                             does not override a register's poll interval.
-			    Defaults to 0 (publish only on change).
+                            Defaults to 0 (publish only on change).
 				
       --log LOG             set log level to the specified value. Defaults to
                             WARNING. Try DEBUG for maximum detail
