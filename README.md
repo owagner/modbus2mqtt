@@ -109,8 +109,8 @@ Setting Modbus coils (FC=5) and registers (FC=6)
 
 modbus2mqtt subscibes to two topics:
 
-prefix/set/+/5/+  # where the first + is the slaveId and the second is the register
-prefix/set/+/6/+  # payload values are written the the devices (assumes 16bit Int)
+- prefix/set/+/5/+  # where the first + is the slaveId and the second is the register
+- prefix/set/+/6/+  # payload values are written the the devices (assumes 16bit Int)
 
 There is only limited sanity checking currently on the payload values.
 
