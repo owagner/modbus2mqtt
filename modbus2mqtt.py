@@ -144,11 +144,11 @@ def messagehandler(mqc,userdata,msg):
         if function != 'set':
             return
         if int(slaveid) not in range(0,255):
-            logging.info("on message - invalid slaveid " + msg.topic)
+            logging.warning("on message - invalid slaveid " + msg.topic)
             return
 
         if not (int(register) >= 0 and int(register) < sys.maxint):
-            logging.info("on message - invalid register " + msg.topic)
+            logging.warning("on message - invalid register " + msg.topic)
             return
 
         if functioncode == str(cst.WRITE_SINGLE_COIL):
@@ -168,7 +168,7 @@ def connecthandler(mqc,userdata,rc):
     logging.info("Connected to MQTT broker with rc=%d" % (rc))
     mqc.disconnected = False
     mqc.subscribe(topic +"set/+/" + str(cst.WRITE_SINGLE_REGISTER) +"/+")
-    mqc.subscribe(topic +"set/+/" + str(cst.WRITE_SINGLE_COIL) +"/+")
+    mqc.subscribe(towarningpic +"set/+/" + str(cst.WRITE_SINGLE_COIL) +"/+")
 
 def disconnecthandler(mqc,userdata,rc):
     logging.warning("Disconnected from MQTT broker with rc=%d" % (rc))
