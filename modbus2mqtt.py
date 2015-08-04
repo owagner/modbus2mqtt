@@ -87,9 +87,7 @@ class Register:
                 self.lastval=r
                 fulltopic=topic+"status/"+self.topic
                 logging.info("Publishing " + fulltopic)
-                (result,mid) = mqc.publish(fulltopic,self.lastval,qos=0,retain=True)
-                if result == mqtt.MQTT_ERR_NO_CONN:
-                    mqc.disconnected = True
+                mqc.publish(fulltopic,self.lastval,qos=0,retain=True)
                 self.last = time.time()
         except modbus_tk.modbus.ModbusError as exc:
             logging.error("Error reading "+self.topic+": Slave returned %s - %s", exc, exc.get_exception_code())
@@ -156,7 +154,7 @@ def messagehandler(mqc,userdata,msg):
         elif functioncode == str(cst.WRITE_SINGLE_REGISTER):
             logging.info("Writing single register " + register)
         else:
-            logging.error("Error attempting to write - Invalid function code " + msg.topic)
+            logging.error("Error attempting to write - invalid function code " + msg.topic)
             return
                      
         res=master.execute(int(slaveid),int(functioncode),int(register),output_value=int(msg.payload))
@@ -166,14 +164,12 @@ def messagehandler(mqc,userdata,msg):
     
 def connecthandler(mqc,userdata,rc):
     logging.info("Connected to MQTT broker with rc=%d" % (rc))
-    mqc.disconnected = False
-    mqc.subscribe(topic +"set/+/" + str(cst.WRITE_SINGLE_REGISTER) +"/+")
-    mqc.subscribe(towarningpic +"set/+/" + str(cst.WRITE_SINGLE_COIL) +"/+")
+    mqc.subscribe(topic+"set/+/"+str(cst.WRITE_SINGLE_REGISTER)+"/+")
+    mqc.subscribe(topic+"set/+/"+str(cst.WRITE_SINGLE_COIL)+"/+")
+    mqc.publish(topic+"connected",2,qos=1,retain=True)
 
 def disconnecthandler(mqc,userdata,rc):
     logging.warning("Disconnected from MQTT broker with rc=%d" % (rc))
-    mqc.disconnected=True
-
 
 try:
     clientid=args.clientid + "-" + str(time.time())
@@ -183,9 +179,8 @@ try:
     mqc.on_disconnect=disconnecthandler
     mqc.will_set(topic+"connected",0,qos=2,retain=True)
     mqc.disconnected =True
-    mqc.connect(args.mqtt_host,args.mqtt_port,60,)
-    mqc.publish(topic+"connected",1,qos=1,retain=True)
-    mqc.loop(timeout=1, max_packets=1)
+    mqc.connect(args.mqtt_host,args.mqtt_port,60)
+    mqc.loop_start()
     
     if args.rtu:
         master=modbus_rtu.RtuMaster(serial.serial_for_url(args.rtu,baudrate=args.rtu_baud,parity=args.rtu_parity[0].upper()))
@@ -195,26 +190,11 @@ try:
         logging.error("You must specify a modbus access method")
         sys.exit(1)
     
-    mqc.publish(topic+"connected",2,qos=1,retain=True)
-    print('Press Ctrl+C to exit')
     
     while True:
-        try:
-            if not mqc.disconnected:
-                mqc.loop(timeout=1, max_packets=1)
-                for r in registers:
-                    r.checkpoll()
-                time.sleep(0.25)
-            else:
-                logging.debug("Reinitializing MQTT")
-                err = mqc.reconnect()
-                mqc.disconnected = (err != mqtt.MQTT_ERR_SUCCESS)
-                if mqc.disconnected:
-                    logging.error("Error Reconnecting - MQTT Error: " + str(err))
-                    time.sleep(5)
-        except socket.error as e:
-            logging.error("Reconnecting " + str(e))
-            time.sleep(5)
+        for r in registers:
+            r.checkpoll()
+            time.sleep(1)
 
 except Exception as e:
     logging.error("Unhandled error [" + str(e) + "]")
