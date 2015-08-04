@@ -194,7 +194,7 @@ try:
     while True:
         for r in registers:
             r.checkpoll()
-            time.sleep(1)
+        time.sleep(1)
 
 except Exception as e:
     logging.error("Unhandled error [" + str(e) + "]")
