@@ -24,8 +24,9 @@ import signal
 import modbus_tk
 import modbus_tk.defines as cst
 from modbus_tk import modbus_rtu
+from modbus_tk import modbus_tcp
 
-version="0.4"
+version="0.5"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
@@ -35,6 +36,9 @@ parser.add_argument('--clientid', default='modbus2mqtt', help='Client ID prefix 
 parser.add_argument('--rtu', help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
+parser.add_argument('--tcp', help='Act as a Modbus TCP master')
+parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus TCP. Defaults to 502')
+parser.add_argument('--tcp-host', default='127.0.0.1', help='Host to connect to. Defaults to 127.0.0.1')
 parser.add_argument('--registers', required=True, help='Register definition file. Required!')
 parser.add_argument('--log', help='set log level to the specified value. Defaults to WARNING. Use DEBUG for maximum detail')
 parser.add_argument('--syslog', action='store_true', help='enable logging to syslog')
@@ -184,12 +188,14 @@ try:
     
     if args.rtu:
         master=modbus_rtu.RtuMaster(serial.serial_for_url(args.rtu,baudrate=args.rtu_baud,parity=args.rtu_parity[0].upper()))
-        master.set_timeout(5.0)
-        master.set_verbose(True)
+    elif args.tcp:
+        master=modbus_tcp.TcpMaster(args.tcp_host,args.tcp_port)
     else:
-        logging.error("You must specify a modbus access method")
+        logging.error("You must specify a modbus access method, either --rtu or --tcp")
         sys.exit(1)
-    
+
+    master.set_verbose(True)
+    master.set_timeout(5.0)
     
     while True:
         for r in registers:
