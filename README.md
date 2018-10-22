@@ -1,26 +1,41 @@
-modbus2mqtt
-===========
+spicierModbus2mqtt
+==================
 
-  Written and (C) 2015 Oliver Wagner <owagner@tellerulam.com> 
+
+Written and (C) 2018 Max Brueggemann <mail@maxbrueggemann.de> 
+Contains code and documentation from modbus2mqtt, written and (C) 2015 Oliver Wagner <owagner@tellerulam.com> 
   
-  Provided under the terms of the MIT license.
+Provided under the terms of the MIT license.
 
 
 Overview
 --------
-modbus2mqtt is a Modbus master which continously polls slaves and publishes
-register values via MQTT.
+spicierModbus2mqtt is a Modbus master which continously polls slaves and publishes
+values via MQTT.
 
 It is intended as a building block in heterogenous smart home environments where 
 an MQTT message broker is used as the centralized message bus.
 See https://github.com/mqtt-smarthome for a rationale and architectural overview.
 
+Why spicier?
+------------
+modbus2mqtt by Oliver Wagner is very nicely written but it has some major caveats:
+- polling of consecutive references (coils/registers) is not done within a single modbus
+  request. Instead there is a modbus request for every single reference which dramatically
+  limits the performance of the whole bus.
+- performance is limited to one modbus request per second artificially
+- writing to a modbus slave device from the mqtt side requires knowledge about the location
+  of data points (coils and registers) within the slave device.
+
+
+These issues are not likely to be resolved in modbus2mqtt because it has not seen any development in a while. So I decided to do a bit of a rewrite and change a couple of things. Unfortunately
+this breaks compatibility with the original register definition files but there is no way
+around it.
 
 Dependencies
 ------------
 * Eclipse Paho for Python - http://www.eclipse.org/paho/clients/python/
-* modbus-tk for Modbus communication - https://github.com/ljean/modbus-tk/
-
+* pymodbus - https://github.com/riptideio/pymodbus
 
 Command line options
 --------------------
@@ -113,24 +128,3 @@ modbus2mqtt subscibes to two topics:
 - prefix/set/+/6/+  # payload values are written the the devices (assumes 16bit Int)
 
 There is only limited sanity checking currently on the payload values.
-
-
-Changelog
----------
-* 0.4 - 2015/07/31 - nzfarmer
-  - added support for MQTT subscribe + Mobdus write
-    Topics are of the form: prefix/set/<slaveid (0:255)>/<fc (5,6)>/<register>  (payload = value to write)
-  - added CNTL-C for controlled exit
-  - added --clientid for MQTT connections
-  - added --force to repost register values regardless of change every x seconds where x >0
-	
-* 0.3 - 2015/05/26 - owagner
-  - support optional string format specification
-* 0.2 - 2015/05/26 - owagner
-  - added "--rtu-parity" option to set the parity for RTU serial communication. Defaults to "even",
-    to be inline with Modbus specification
-  - changed default for "--rtu-baud" to 19200, to be inline with Modbus specification
-
-* 0.1 - 2015/05/25 - owagner
-  - Initial version
-  

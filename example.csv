@@ -1,0 +1,30 @@
+"type","topic","col2","col3","col4","col5","col6"
+#
+# Example register definition file.
+#
+# Example poller-object:
+# poll,someTopic,1,2,5,1,1.0
+# Will poll states of 5 coils from slave device 1 once a second, starting at coil 2.
+#
+# Example reference-object:
+# ref,light0,2,rw
+# The state of coil 2 will be published to mqtt with the topic modbus/someTopic/state/light0
+# if collum 3 contains an 'r'.
+# If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
+# column 3 contains a 'w', the new state will be written to the slave device.
+# 
+#
+#
+# type, topic, slaveid,   ref, size, functioncode, rate
+# type, topic, reference, rw,      ,        
+#
+#
+#
+poll,elab,7,0,4,coil,0.002
+ref,licht0,0,rw
+ref,licht1,1,rw
+ref,licht2,2,rw
+ref,licht3,3,rw
+
+poll,elab,7,0,12,holding_register,0.5
+ref,register0,0,rw
