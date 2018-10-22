@@ -50,13 +50,23 @@ So be careful :-)
 
 Dependencies
 ------------
+* python3
 * Eclipse Paho for Python - http://www.eclipse.org/paho/clients/python/
 * pymodbus - https://github.com/riptideio/pymodbus
+
+Installation of dependencies
+----------------------------
+* Install python3 and python3-pip (on a Debian based system something like sudo apt install python3 python3-pip will likely get you there)
+* run pip3 install pymodbus
+* run pip3 install paho-mqtt
 
 Usage
 --------------------
 * fix me
-      
+* example for rtu and mqtt broker on localhost: python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
+* example for tcp slave and mqtt broker on localhost: python3 modbus2mqtt.py --tcp localhost --config testing.csv
+
+     
 Configuration file
 -------------------
 The Modbus registers/coils which are to be polled are defined in a CSV file with
