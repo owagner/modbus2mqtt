@@ -3,6 +3,7 @@ spicierModbus2mqtt
 
 
 Written and (C) 2018 Max Brueggemann <mail@maxbrueggemann.de> 
+
 Contains code from modbus2mqtt, written and (C) 2015 Oliver Wagner <owagner@tellerulam.com> 
   
 Provided under the terms of the MIT license.
@@ -61,8 +62,7 @@ Installation of dependencies
 * run pip3 install paho-mqtt
 
 Usage
---------------------
-* fix me
+-----
 * example for rtu and mqtt broker on localhost: python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
 * example for tcp slave and mqtt broker on localhost: python3 modbus2mqtt.py --tcp localhost --config testing.csv
 

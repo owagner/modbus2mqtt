@@ -20,11 +20,12 @@
 #
 #
 #
-poll,elab,7,0,4,coil,0.002
-ref,licht0,0,rw
-ref,licht1,1,rw
-ref,licht2,2,rw
-ref,licht3,3,rw
+# 
+poll,kitchen,7,0,4,coil,0.002
+ref,light0,0,rw
+ref,light1,1,rw
+ref,light2,2,rw
+ref,light3,3,rw
 
-poll,elab,7,0,12,holding_register,0.5
+poll,kitchen,7,0,12,holding_register,0.5
 ref,register0,0,rw
