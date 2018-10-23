@@ -27,8 +27,6 @@
 # 
 
 import argparse
-import logging
-import logging.handlers
 import time
 import socket
 import paho.mqtt.client as mqtt
@@ -50,16 +48,12 @@ parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
 parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server port. Defaults to 1883')
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
-#parser.add_argument('--clientid', default='modbus2mqtt', help='Client ID prefix for MQTT connection')
 parser.add_argument('--rtu', help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
 parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
 parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus TCP. Defaults to 502')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
-#parser.add_argument('--log', help='set log level to the specified value. Defaults to WARNING. Use DEBUG for maximum detail')
-parser.add_argument('--syslog', action='store_true', help='enable logging to syslog')
-parser.add_argument('--force', default='0',type=int, help='publish values after "force" seconds since publish regardless of change. Defaults to 0 (change only)')
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 
 
@@ -72,7 +66,6 @@ globaltopic=args.mqtt_topic
 if not globaltopic.endswith("/"):
     globaltopic+="/"
 
-logging.info('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
 if verbosity:
     print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
 
@@ -80,7 +73,7 @@ master=None
 
 def signal_handler(signal, frame):
         print('Exiting ' + sys.argv[0])
-        master.disconnect()
+        master.close()
         sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
@@ -93,7 +86,8 @@ class Device:
         self.occupiedTopics=[]
         self.writableReferences=[]
         self.slaveid=slaveid
-        logging.info('Added new device \"'+self.name+'\"')
+        if verbosity:
+            print('Added new device \"'+self.name+'\"')
 
 
 class Poller:
@@ -305,7 +299,6 @@ def messagehandler(mqc,userdata,msg):
                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
         
 def connecthandler(mqc,userdata,flags,rc):
-    logging.info("Connected to MQTT broker with rc=%d" % (rc))
     if verbosity: 
         print("Connected to MQTT broker with rc=%d" % (rc))
     mqc.subscribe(globaltopic+"+/set/+")
@@ -314,9 +307,7 @@ def connecthandler(mqc,userdata,flags,rc):
 def disconnecthandler(mqc,userdata,rc):
     if verbosity:
         print("Disconnected from MQTT broker with rc=%d" % (rc))
-    logging.warning("Disconnected from MQTT broker with rc=%d" % (rc))
 
-#    try:
 if True:
     clientid=globaltopic + "-" + str(time.time())
     mqc=mqtt.Client(client_id=clientid)
