@@ -55,7 +55,7 @@ parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to hos
 parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus TCP. Defaults to 502')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbose',action='store_true' ,help='blah')
-
+parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
 
 
 args=parser.parse_args()
@@ -102,6 +102,8 @@ class Poller:
         self.last = None
         self.readableReferences=[]
         self.device=None
+        self.disabled=False
+        self.failcounter=0
 
         for myDev in deviceList:
             if myDev.name == self.topic:
@@ -118,39 +120,61 @@ class Poller:
         else:
             print("Slave device "+str(self.slaveid)+" responded with errorcode. Maybe bad configuration?")
             return False
+    
+    def failCount(self,failed):
+        if not failed:
+            self.failcounter=0
+        else:
+            if self.failcounter==3:
+                self.disabled=True
+                print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+ " and functioncode "+str(self.functioncode)+" disabled due to the above error.")
+            else:
+                self.failcounter=self.failcounter+1
 
 
     def poll(self):
 #        try:
         try:
             result = None
-
+            failed = True
             if self.functioncode == 3:
                 result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
                 if self.checkSlaveError(result):
                     data = result.registers
+                    failed = False
             if self.functioncode == 1:
                 result = master.read_coils(self.reference, self.size, unit=self.slaveid)
                 if self.checkSlaveError(result):
                     data = result.bits
+                    failed = False
 
             if self.functioncode == 2:
                 result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
-                data = result.bits
+                if self.checkSlaveError(result):
+                    data = result.bits
+                    failed = False
             
             if self.functioncode == 4:
                 result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
-                data = result.registers
-                
-            for ref in self.readableReferences:
-                ref.checkPublish(data,self.topic)
+                if self.checkSlaveError(result):
+                    data = result.registers
+                    failed = False
+
+            if not failed:
+                for ref in self.readableReferences:
+                    ref.checkPublish(data,self.topic)
+            
+            if args.autoremove:
+                self.failCount(failed)
+
         except:
             print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
-        
+            if args.autoremove:
+                self.failCount(failed)
 
 
     def checkPoll(self):
-        if time.clock_gettime(0) >= self.next_due:
+        if time.clock_gettime(0) >= self.next_due and not self.disabled:
             self.poll()
             self.next_due=time.clock_gettime(0)+self.rate
 
