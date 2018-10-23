@@ -115,27 +115,43 @@ class Poller:
             device = Device(self.topic,slaveid)
             deviceList.append(device)
             self.device=device
-            
+    
+    def checkSlaveError(self,result):
+        if result.function_code < 0x80:
+            return True
+        else:
+            print("Slave device "+str(self.slaveid)+" responded with errorcode. Maybe bad configuration?")
+            return False
+
+
     def poll(self):
 #        try:
-        if True:
+        try:
             result = None
 
             if self.functioncode == 3:
                 result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
-                data = result.registers
+                if self.checkSlaveError(result):
+                    data = result.registers
             if self.functioncode == 1:
                 result = master.read_coils(self.reference, self.size, unit=self.slaveid)
-                data = result.bits
+                if self.checkSlaveError(result):
+                    data = result.bits
+
             if self.functioncode == 2:
                 result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
                 data = result.bits
+            
             if self.functioncode == 4:
                 result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
                 data = result.registers
-
+                
             for ref in self.readableReferences:
                 ref.checkPublish(data,self.topic)
+        except:
+            print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
+        
+
 
     def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due:
