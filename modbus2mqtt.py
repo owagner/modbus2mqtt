@@ -43,6 +43,7 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
+verbosity=False
 version="0.1"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
@@ -59,13 +60,21 @@ parser.add_argument('--config', required=True, help='Configuration file. Require
 #parser.add_argument('--log', help='set log level to the specified value. Defaults to WARNING. Use DEBUG for maximum detail')
 parser.add_argument('--syslog', action='store_true', help='enable logging to syslog')
 parser.add_argument('--force', default='0',type=int, help='publish values after "force" seconds since publish regardless of change. Defaults to 0 (change only)')
+parser.add_argument('--verbose',action='store_true' ,help='blah')
+
+
+
 args=parser.parse_args()
+
+verbosity=args.verbose
 
 globaltopic=args.mqtt_topic
 if not globaltopic.endswith("/"):
     globaltopic+="/"
 
-logging.info('Starting spicier modbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
+logging.info('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
+if verbosity:
+    print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
 
 def signal_handler(signal, frame):
         print('Exiting ' + sys.argv[0])
@@ -158,7 +167,7 @@ class Poller:
             else:
                 print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" in poller \""+self.topic+"\" is neither read nor writable, therefore ignoring it.")
         else:
-            print("Reference topic ("+str(myRef.topic)+") is already occupied, therefore ignoring it.")
+            print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
 class Reference:
     def __init__(self,topic,reference,format,rw):
@@ -192,7 +201,6 @@ pollers=[]
 
 # Now lets read the config file
 with open(args.config,"r") as csvfile:
-   # dialect=csv.Sniffer().sniff(csvfile.read(8192))
     csvfile.seek(0)
     reader=csv.DictReader(csvfile)
     currentPoller=None
@@ -217,8 +225,6 @@ with open(args.config,"r") as csvfile:
             reference = int(row["col2"])
             currentPoller.addReference(Reference(row["topic"],reference,"",row["col3"]))
 
-
-
 def messagehandler(mqc,userdata,msg):
     if True:
 #    try:
@@ -238,8 +244,8 @@ def messagehandler(mqc,userdata,msg):
                 myRef=iterRef
         if myRef == None: # no such reference
             return    
-
-#        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode))
+        if verbosity:
+            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode))
         logging.info("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode))
 
         payload = str(msg.payload.decode("utf-8"))
@@ -265,10 +271,14 @@ def messagehandler(mqc,userdata,msg):
         
 def connecthandler(mqc,userdata,flags,rc):
     logging.info("Connected to MQTT broker with rc=%d" % (rc))
+    if verbosity: 
+        print("Connected to MQTT broker with rc=%d" % (rc))
     mqc.subscribe(globaltopic+"+/set/+")
     mqc.publish(globaltopic+"connected",1,qos=1,retain=True)
 
 def disconnecthandler(mqc,userdata,rc):
+    if verbosity:
+        print("Disconnected from MQTT broker with rc=%d" % (rc))
     logging.warning("Disconnected from MQTT broker with rc=%d" % (rc))
 
 #    try:
