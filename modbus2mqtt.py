@@ -76,12 +76,14 @@ logging.info('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(versio
 if verbosity:
     print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
 
+master=None
+
 def signal_handler(signal, frame):
         print('Exiting ' + sys.argv[0])
+        master.disconnect()
         sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-master=None
 
 deviceList=[]
 
@@ -260,10 +262,6 @@ def messagehandler(mqc,userdata,msg):
                 myRef=iterRef
         if myRef == None: # no such reference
             return    
-        if verbosity:
-            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode))
-        logging.info("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode))
-
         payload = str(msg.payload.decode("utf-8"))
         if myRef.writefunctioncode == 5:
             value = None
@@ -272,8 +270,19 @@ def messagehandler(mqc,userdata,msg):
             if payload == 'False':
                 value = False
             if value != None:
-                result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
-        
+                try:
+                    result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
+                    if result.function_code < 0x80 and verbosity:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                    else:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+            
+                except:
+                    print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
+            else:
+                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not \"True\" or \"False\".")
+
+
         if myRef.writefunctioncode == 6:
             try:
                 value=int(payload)
@@ -281,9 +290,19 @@ def messagehandler(mqc,userdata,msg):
                     value = None
             except:
                 value=None
+            
+                    
             if value is not None:
-                #print(value)
-                result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+                try:
+                    result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+                    if result.function_code < 0x80 and verbosity:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                    else:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                except:
+                    print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
+            else:
+                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
         
 def connecthandler(mqc,userdata,flags,rc):
     logging.info("Connected to MQTT broker with rc=%d" % (rc))
