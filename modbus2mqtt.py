@@ -57,12 +57,21 @@ parser.add_argument('--config', required=True, help='Configuration file. Require
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
 
-
 args=parser.parse_args()
 
 verbosity=args.verbose
 
+class Control:
+    def __init__(self):
+        self.runLoop = True
+    def stopLoop(self):
+        self.runLoop = False
+
+control = Control()
+
+
 globaltopic=args.mqtt_topic
+
 if not globaltopic.endswith("/"):
     globaltopic+="/"
 
@@ -73,8 +82,7 @@ master=None
 
 def signal_handler(signal, frame):
         print('Exiting ' + sys.argv[0])
-        master.close()
-        sys.exit(0)
+        control.stopLoop()
 signal.signal(signal.SIGINT, signal_handler)
 
 
@@ -360,12 +368,13 @@ if True:
         sys.exit(1)
     master.connect()
 
-while True:
+while control.runLoop:
     for p in pollers:
         p.checkPoll()
     time.sleep(0.001)
 
-
+master.close()
+sys.exit(1)
 
 
 
