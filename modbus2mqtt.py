@@ -56,6 +56,7 @@ parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
+parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in mail polling loop. Defaults to 10ms.')
 
 args=parser.parse_args()
 
@@ -112,6 +113,7 @@ class Poller:
         self.device=None
         self.disabled=False
         self.failcounter=0
+        self.oldData=[]
 
         for myDev in deviceList:
             if myDev.name == self.topic:
@@ -142,7 +144,7 @@ class Poller:
 
     def poll(self):
 #        try:
-        try:
+        if True:
             result = None
             failed = True
             if self.functioncode == 3:
@@ -169,16 +171,28 @@ class Poller:
                     failed = False
 
             if not failed:
-                for ref in self.readableReferences:
-                    ref.checkPublish(data,self.topic)
+                changed=False
+                if len(data)>len(self.oldData):
+                    for d in data:
+                        self.oldData.append(d)
+
+                for x in range(len(data)):
+                    if not self.oldData[x] == data[x]:
+                        self.oldData[x]=data[x]
+                        changed=True
+                        break
+
+                if changed:
+                    for ref in self.readableReferences:
+                        ref.checkPublish(data,self.topic)
             
             if args.autoremove:
                 self.failCount(failed)
 
-        except:
-            print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
-            if args.autoremove:
-                self.failCount(failed)
+        #except:
+         #   print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
+          #  if args.autoremove:
+           #     self.failCount(failed)
 
 
     def checkPoll(self):
@@ -371,7 +385,7 @@ if True:
 while control.runLoop:
     for p in pollers:
         p.checkPoll()
-    time.sleep(0.001)
+    time.sleep(args.set_loop_break)
 
 master.close()
 sys.exit(1)
