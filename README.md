@@ -57,7 +57,7 @@ Dependencies
 
 Installation of dependencies
 ----------------------------
-* Install python3 and python3-pip (on a Debian based system something like sudo apt install python3 python3-pip will likely get you there)
+* Install python3 and python3-pip and python3-serial (on a Debian based system something like sudo apt install python3 python3-pip python3-serial will likely get you there)
 * run pip3 install pymodbus
 * run pip3 install paho-mqtt
 
