@@ -113,7 +113,6 @@ class Poller:
         self.device=None
         self.disabled=False
         self.failcounter=0
-        self.oldData=[]
 
         for myDev in deviceList:
             if myDev.name == self.topic:
@@ -144,7 +143,7 @@ class Poller:
 
     def poll(self):
 #        try:
-        if True:
+        try:
             result = None
             failed = True
             if self.functioncode == 3:
@@ -171,28 +170,16 @@ class Poller:
                     failed = False
 
             if not failed:
-                changed=False
-                if len(data)>len(self.oldData):
-                    for d in data:
-                        self.oldData.append(d)
-
-                for x in range(len(data)):
-                    if not self.oldData[x] == data[x]:
-                        self.oldData[x]=data[x]
-                        changed=True
-                        break
-
-                if changed:
-                    for ref in self.readableReferences:
-                        ref.checkPublish(data,self.topic)
+                for ref in self.readableReferences:
+                    ref.checkPublish(data,self.topic)
             
             if args.autoremove:
                 self.failCount(failed)
 
-        #except:
-         #   print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
-          #  if args.autoremove:
-           #     self.failCount(failed)
+        except:
+            print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
+            if args.autoremove:
+                self.failCount(failed)
 
 
     def checkPoll(self):
