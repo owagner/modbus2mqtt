@@ -24,7 +24,6 @@
 # Requires:
 # - Eclipse Paho for Python - http://www.eclipse.org/paho/clients/python/
 # - pymodbus - https://github.com/riptideio/pymodbus
-# 
 
 import argparse
 import time
@@ -70,7 +69,6 @@ class Control:
 
 control = Control()
 
-
 globaltopic=args.mqtt_topic
 
 if not globaltopic.endswith("/"):
@@ -86,8 +84,8 @@ def signal_handler(signal, frame):
         control.stopLoop()
 signal.signal(signal.SIGINT, signal_handler)
 
-
 deviceList=[]
+
 
 class Device:
     def __init__(self,name,slaveid):
@@ -122,14 +120,16 @@ class Poller:
             device = Device(self.topic,slaveid)
             deviceList.append(device)
             self.device=device
-    
+
+
     def checkSlaveError(self,result):
         if result.function_code < 0x80:
             return True
         else:
             print("Slave device "+str(self.slaveid)+" responded with errorcode. Maybe bad configuration?")
             return False
-    
+
+
     def failCount(self,failed):
         if not failed:
             self.failcounter=0
@@ -142,7 +142,6 @@ class Poller:
 
 
     def poll(self):
-#        try:
         try:
             result = None
             failed = True
@@ -186,6 +185,7 @@ class Poller:
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
             self.poll()
             self.next_due=time.clock_gettime(0)+self.rate
+
 
     def addReference(self,myRef):
         #check reference configuration and maybe add to this poller or to the list of writable things
@@ -233,18 +233,14 @@ class Reference:
     def checkPublish(self,result,topic):
         if self.lastval != result[self.relativeReference]:
             self.lastval= result[self.relativeReference]
-            #print(topic+"/state/"+self.topic)
-            #print(globaltopic)
             mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=0,retain=True)
-            
         
-##########################################################################################
 pollers=[]
 
 # type, topic, slaveid,   ref, size, functioncode, rate
 # type, topic, reference, rw,      ,             ,
 
-# Now lets read the config file
+# Now let's read the config file
 with open(args.config,"r") as csvfile:
     csvfile.seek(0)
     reader=csv.DictReader(csvfile)
@@ -272,8 +268,6 @@ with open(args.config,"r") as csvfile:
 
 def messagehandler(mqc,userdata,msg):
     if True:
-#    try:
-
         (prefix,device,function,reference) = msg.topic.split("/")
         if function != 'set':
             return
