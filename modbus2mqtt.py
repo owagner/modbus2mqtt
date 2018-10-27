@@ -56,6 +56,7 @@ parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
+parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in mail polling loop. Defaults to 10ms.')
 
 args=parser.parse_args()
 
@@ -371,7 +372,7 @@ if True:
 while control.runLoop:
     for p in pollers:
         p.checkPoll()
-    time.sleep(0.001)
+    time.sleep(args.set_loop_break)
 
 master.close()
 sys.exit(1)
