@@ -85,7 +85,7 @@ Topics
 ------
 Values are published as strings to topic:
 
-"<prefix>/<poller topic>/state/<reference topic>"
+"prefix/poller topic/state/reference topic"
 
 A value will only be published if it's textual representation has changed,
 e.g. _after_ formatting has been applied. The published MQTT messages have
@@ -100,10 +100,13 @@ Writing to Modbus coils and registers
 
 spiciermodbus2mqtt subscibes to :
 
-"<prefix>/<poller topic>/set/<reference topic>"
+"prefix/poller topic/set/reference topic"
+
 
 say you want to write to a coil:
+
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "True"
 
 to a register:
+
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "12346"
