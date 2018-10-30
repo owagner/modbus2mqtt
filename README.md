@@ -98,13 +98,15 @@ the broker (1) and to the Modbus interface (2).
 Writing to Modbus coils and registers
 ------------------------------------------------
 
-spiciermodbus2mqtt subscibes to :
+spiciermodbus2mqtt subscibes to:
 
 "prefix/poller topic/set/reference topic"
 
 
 say you want to write to a coil:
+
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "True"
 
 to a register:
+
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "12346"
