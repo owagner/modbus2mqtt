@@ -104,9 +104,7 @@ spiciermodbus2mqtt subscibes to :
 
 
 say you want to write to a coil:
-
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "True"
 
 to a register:
-
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "12346"
