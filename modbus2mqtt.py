@@ -40,7 +40,6 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-verbosity=False
 version="0.1"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
@@ -58,7 +57,7 @@ parser.add_argument('--autoremove',action='store_true',help='Automatically remov
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in mail polling loop. Defaults to 10ms.')
 
 args=parser.parse_args()
-
+verbosity=False
 verbosity=args.verbose
 
 class Control:
