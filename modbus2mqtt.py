@@ -35,6 +35,8 @@ import sys
 import csv
 import signal
 
+import addToHomeAssistant
+
 from pymodbus.pdu import ModbusRequest
 from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
@@ -46,7 +48,7 @@ parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
 parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server port. Defaults to 1883')
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
-parser.add_argument('--rtu', help='pyserial URL (or port name) for RTU serial port')
+parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
 parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
@@ -54,11 +56,15 @@ parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
+parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in mail polling loop. Defaults to 10ms.')
 
 args=parser.parse_args()
 verbosity=False
 verbosity=args.verbose
+addToHass=False
+addToHass=args.add_to_homeassistant
+
 
 class Control:
     def __init__(self):
@@ -84,6 +90,7 @@ def signal_handler(signal, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 deviceList=[]
+referenceList=[]
 
 
 class Device:
@@ -97,11 +104,12 @@ class Device:
 
 
 class Poller:
-    def __init__(self,topic,rate,slaveid,functioncode,reference,size):
+    def __init__(self,topic,rate,slaveid,functioncode,reference,size,dataType):
         self.topic=topic
         self.rate=float(rate)
         self.slaveid=int(slaveid)
         self.functioncode=int(functioncode)
+        self.dataType=dataType
         self.reference=int(reference)
         self.size=int(size)
         self.next_due=0
@@ -195,6 +203,7 @@ class Poller:
                 if "r" in myRef.rw:
                     if myRef.checkSanity(self.reference,self.size):
                         self.readableReferences.append(myRef)
+                        referenceList.append(myRef)
                     else:
                         print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" is not in range ("+str(self.reference)+" to "+str(int(self.reference+self.size))+") of poller \""+self.topic+"\", therefore ignoring it for polling.")
                 if "w" in myRef.rw:
@@ -208,13 +217,14 @@ class Poller:
                         print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" in poller \""+self.topic+"\" is not writable (input register)")
                     if myRef.writefunctioncode is not None:
                        self.device.writableReferences.append(myRef)
+                       referenceList.append(myRef)
             else:
                 print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" in poller \""+self.topic+"\" is neither read nor writable, therefore ignoring it.")
         else:
             print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
 class Reference:
-    def __init__(self,topic,reference,format,rw):
+    def __init__(self,topic,reference,format,rw,poller):
         self.topic=topic
         self.reference=int(reference)
         self.format=format.split(":",2)
@@ -223,6 +233,7 @@ class Reference:
         self.relativeReference=None
         self.writefunctioncode=None
         self.device=None
+        self.poller=poller
 
     def checkSanity(self,reference,size):
         if self.reference in range(reference,size+reference):
@@ -248,22 +259,26 @@ with open(args.config,"r") as csvfile:
         if row["type"]=="poller" or row["type"]=="poll":
             if row["col5"] == "holding_register":
                 functioncode = 3
+                dataType="int16"
             if row["col5"] == "coil":
                 functioncode = 1
+                dataType="bool"
             if row["col5"] == "input_register":
                 functioncode = 4
+                dataType="int16"
             if row["col5"] == "input_status":
                 functioncode = 2
+                dataType="bool"
             rate = float(row["col6"])
             slaveid = int(row["col2"])
             reference = int(row["col3"])
             size = int(row["col4"])
-            currentPoller = Poller(row["topic"],rate,slaveid,functioncode,reference,size)
+            currentPoller = Poller(row["topic"],rate,slaveid,functioncode,reference,size,dataType)
             pollers.append(currentPoller)
             continue
         elif row["type"]=="reference" or row["type"]=="ref":
             reference = int(row["col2"])
-            currentPoller.addReference(Reference(row["topic"],reference,"",row["col3"]))
+            currentPoller.addReference(Reference(row["topic"],reference,"",row["col3"],currentPoller))
 
 def messagehandler(mqc,userdata,msg):
     if True:
@@ -361,6 +376,10 @@ if True:
         print("You must specify a modbus access method, either --rtu or --tcp")
         sys.exit(1)
     master.connect()
+
+    if(addToHass):
+        adder=addToHomeAssistant.HassConnector(mqc,globaltopic,verbosity)
+        adder.addAll(referenceList)
 
 while control.runLoop:
     for p in pollers:
