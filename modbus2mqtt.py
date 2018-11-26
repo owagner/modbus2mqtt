@@ -203,7 +203,8 @@ class Poller:
                 if "r" in myRef.rw:
                     if myRef.checkSanity(self.reference,self.size):
                         self.readableReferences.append(myRef)
-                        referenceList.append(myRef)
+                        if "w" not in myRef.rw:
+                            referenceList.append(myRef)
                     else:
                         print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" is not in range ("+str(self.reference)+" to "+str(int(self.reference+self.size))+") of poller \""+self.topic+"\", therefore ignoring it for polling.")
                 if "w" in myRef.rw:
@@ -387,6 +388,7 @@ while control.runLoop:
     time.sleep(args.set_loop_break)
 
 master.close()
+#adder.removeAll(referenceList)
 sys.exit(1)
 
 
