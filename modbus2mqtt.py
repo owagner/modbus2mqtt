@@ -129,14 +129,6 @@ class Poller:
             self.device=device
 
 
-    def checkSlaveError(self,result):
-        if result.function_code < 0x80:
-            return True
-        else:
-            print("Slave device "+str(self.slaveid)+" responded with errorcode. Maybe bad configuration?")
-            return False
-
-
     def failCount(self,failed):
         if not failed:
             self.failcounter=0
@@ -149,44 +141,37 @@ class Poller:
 
 
     def poll(self):
-        try:
             result = None
-            failed = True
             if self.functioncode == 3:
                 result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
-                if self.checkSlaveError(result):
+                if not result.isError():
                     data = result.registers
-                    failed = False
+
             if self.functioncode == 1:
                 result = master.read_coils(self.reference, self.size, unit=self.slaveid)
-                if self.checkSlaveError(result):
+                if not result.isError():
                     data = result.bits
-                    failed = False
 
             if self.functioncode == 2:
                 result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
-                if self.checkSlaveError(result):
+                if not result.isError():
                     data = result.bits
-                    failed = False
             
             if self.functioncode == 4:
                 result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
-                if self.checkSlaveError(result):
+                if not result.isError():
                     data = result.registers
-                    failed = False
 
-            if not failed:
+            try:
+                data
                 for ref in self.readableReferences:
                     ref.checkPublish(data,self.topic)
-            
-            if args.autoremove:
-                self.failCount(failed)
-
-        except:
-            print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
-            if args.autoremove:
-                self.failCount(failed)
-
+                if args.autoremove:
+                    self.failCount(False)
+            except NameError:      
+                print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
+                if args.autoremove:
+                    self.failCount(True)
 
     def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
