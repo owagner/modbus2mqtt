@@ -142,36 +142,43 @@ class Poller:
 
     def poll(self):
             result = None
-            if self.functioncode == 3:
-                result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
-                if not result.isError():
-                    data = result.registers
-
-            if self.functioncode == 1:
-                result = master.read_coils(self.reference, self.size, unit=self.slaveid)
-                if not result.isError():
-                    data = result.bits
-
-            if self.functioncode == 2:
-                result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
-                if not result.isError():
-                    data = result.bits
-            
-            if self.functioncode == 4:
-                result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
-                if not result.isError():
-                    data = result.registers
-
+            failed = False
             try:
-                data
-                for ref in self.readableReferences:
-                    ref.checkPublish(data,self.topic)
-                if args.autoremove:
-                    self.failCount(False)
-            except NameError:      
-                print("Error talking to slave device "+str(self.slaveid)+" (maybe CRC error or timeout)")
-                if args.autoremove:
-                    self.failCount(True)
+                if self.functioncode == 3:
+                    result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.registers
+                    else:
+                        failed = True
+                if self.functioncode == 1:
+                    result = master.read_coils(self.reference, self.size, unit=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.bits
+                    else:
+                        failed = True
+
+                if self.functioncode == 2:
+                    result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.bits
+                    else:
+                        failed = True
+                if self.functioncode == 4:
+                    result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.registers
+                    else:
+                        failed = True
+                if not failed:
+                    for ref in self.readableReferences:
+                        ref.checkPublish(data,self.topic)
+                else:
+                    print("Slave device "+str(self.slaveid)+" responded with error code.")
+            except:
+                failed = True
+                print("Error talking to slave device "+str(self.slaveid)+" (CRC error or timeout)")
+            if args.autoremove:
+                self.failCount(failed)
 
     def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
@@ -291,15 +298,15 @@ def messagehandler(mqc,userdata,msg):
             if payload == 'False':
                 value = False
             if value != None:
-                try:
                     result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
-                    if result.function_code < 0x80 and verbosity:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
-                    else:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                    try:
+                        if result.function_code < 0x80 and verbosity:
+                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                        else:
+                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
             
-                except:
-                    print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
+                    except NameError:
+                        print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
             else:
                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not \"True\" or \"False\".")
 
@@ -313,14 +320,14 @@ def messagehandler(mqc,userdata,msg):
                 value=None
             
                     
-            if value is not None:
-                try:
-                    result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
-                    if result.function_code < 0x80 and verbosity:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
-                    else:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
-                except:
+        if value is not None:
+            result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+            try:
+                if result.function_code < 0x80 and verbosity:
+                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                else:
+                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+            except NameError:
                     print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
             else:
                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
