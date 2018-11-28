@@ -300,8 +300,9 @@ def messagehandler(mqc,userdata,msg):
             if value != None:
                     result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
                     try:
-                        if result.function_code < 0x80 and verbosity:
-                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                        if result.function_code < 0x80:
+                            if verbosity:
+                                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                         else:
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
             
@@ -320,14 +321,15 @@ def messagehandler(mqc,userdata,msg):
                 value=None
             
                     
-        if value is not None:
-            result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
-            try:
-                if result.function_code < 0x80 and verbosity:
-                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
-                else:
-                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
-            except NameError:
+            if value is not None:
+                result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+                try:
+                    if result.function_code < 0x80:
+                        if verbosity:
+                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                    else:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                except NameError:
                     print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
             else:
                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
