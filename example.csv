@@ -46,7 +46,19 @@ poll,kitchen,7,0,4,coil,0.002
 ref,light0,0,rw
 ref,light1,1,rw
 ref,light2,2,rw
-ref,light3,3,r
+ref,light3,3,rw
 
 poll,kitchen,7,0,12,holding_register,0.5
-ref,register0,0,rw
+ref,someWritableRegister,0,rw
+
+poll,heating,32,52,4,holding_register,1
+ref,temperature_pre,52,r
+ref,temperature_post,53,r
+ref,temperature_setpoint,54,rw
+ref,temperature_outdoors,55,r
+
+poll,ioModule,10,1,2,input_status,0
+ref,doorbell,1,r
+ref,mailbox_sensor,2,r
+
+
