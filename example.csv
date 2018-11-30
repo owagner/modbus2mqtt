@@ -2,30 +2,51 @@
 #
 # Example register definition file.
 #
+#
+#################################################################################
+# Poller-object
+# Columns:
+# type, topic, slaveid, reference, size, functioncode, rate
+#  
+# Possible values for columns:
+# type: poll
+# topic: any string without spaces
+# slaveid: integer 1 to 254
+# reference: integer 0 to 65535
+# size: integer 0 to 65535 (value must not exceed the limits of Modbus of course)
+# functionscode: coil, input_status, holding_register, input_register
+# rate: float 0.0 to some really big number
+#
 # Example poller-object:
 # poll,someTopic,1,2,5,1,1.0
 # Will poll states of 5 coils from slave device 1 once a second, starting at coil 2.
 #
+#################################################################################
+# Reference-Object
+# Columns:
+# type, topic, reference, rw,      ,        
+# type: ref
+# topic: any string without spaces
+# reference: integer 0 to 65535
+# rw: r, w or rw
+#
 # Example reference-object:
 # ref,light0,2,rw
 # The state of coil 2 will be published to mqtt with the topic modbus/someTopic/state/light0
-# if collum 3 contains an 'r'.
+# if column 3 contains an 'r'.
 # If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
 # column 3 contains a 'w', the new state will be written to the slave device.
 # 
-#
-#
-# type, topic, slaveid,   ref, size, functioncode, rate
+#################################################################################
+# Columns:
+# type, topic, slaveid, reference, size, functioncode, rate
 # type, topic, reference, rw,      ,        
 #
-#
-#
-# 
 poll,kitchen,7,0,4,coil,0.002
 ref,light0,0,rw
 ref,light1,1,rw
 ref,light2,2,rw
-ref,light3,3,rw
+ref,light3,3,r
 
 poll,kitchen,7,0,12,holding_register,0.5
 ref,register0,0,rw
