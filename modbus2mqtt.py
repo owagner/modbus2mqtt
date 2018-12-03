@@ -57,7 +57,7 @@ parser.add_argument('--config', required=True, help='Configuration file. Require
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
-parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in mail polling loop. Defaults to 10ms.')
+parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
 
 args=parser.parse_args()
 verbosity=False
@@ -338,7 +338,7 @@ def connecthandler(mqc,userdata,flags,rc):
     if verbosity: 
         print("Connected to MQTT broker with rc=%d" % (rc))
     mqc.subscribe(globaltopic+"+/set/+")
-    mqc.publish(globaltopic+"connected",1,qos=1,retain=True)
+    mqc.publish(globaltopic+"connected","True",qos=1,retain=True)
 
 def disconnecthandler(mqc,userdata,rc):
     if verbosity:
@@ -350,7 +350,7 @@ if True:
     mqc.on_connect=connecthandler
     mqc.on_message=messagehandler
     mqc.on_disconnect=disconnecthandler
-    mqc.will_set(globaltopic+"connected",0,qos=2,retain=True)
+    mqc.will_set(globaltopic+"connected","True",qos=2,retain=True)
     mqc.disconnected = True
     mqc.connect(args.mqtt_host,args.mqtt_port,60)
     mqc.loop_start()
