@@ -293,9 +293,9 @@ def messagehandler(mqc,userdata,msg):
         payload = str(msg.payload.decode("utf-8"))
         if myRef.writefunctioncode == 5:
             value = None
-            if payload == 'True':
+            if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
                 value = True
-            if payload == 'False':
+            if payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
                 value = False
             if value != None:
                     result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
