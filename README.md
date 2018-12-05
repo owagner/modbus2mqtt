@@ -71,15 +71,43 @@ Usage
      
 Configuration file
 -------------------
-The Modbus registers/coils which are to be polled are defined in a CSV file with
-the following columns:
+The Modbus registers/coils which are to be polled are defined in a CSV file.
+There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. Poller objects define the modbus registers to read/write. References define what topic should be written from the Poller MODBUS registers.
 
-*fix me
+Refer to the example.csv for more details.
 
 Example:
 
-somePoller,..
-someReference,..
+poller-object:
+```
+poll,someTopic,1,2,5,coil,1.0
+```
+Will poll states of 5 coils from slave device 1 once a second, starting at coil 2.
+
+reference-object:
+```
+ref,light0,2,rw
+```
+The state of coil 2 will be published to mqtt with the topic modbus/someTopic/state/light0
+if column 3 contains an 'r'.
+If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
+column 3 contains a 'w', the new state will be written to the slave device.
+
+These are used together like this:
+```
+poll,kitchen,7,0,5,coil,1.0
+ref,light0,0,rw
+ref,light1,1,rw
+ref,light2,2,rw
+ref,light3,3,rw
+ref,light4,4,rw
+```
+This will poll from MODBUS slaveid 7, starting at coil offset 0, for 5 coils, 1.0 times a second.
+
+The first coil 0 will then be sent as an MQTT message with topic modbus/kitchen/state/light0.
+
+The second coil 1 will then be sent as an MQTT message with topic modbus/kitchen/state/light1 and so on.
+
 
 Topics
 ------
