@@ -52,7 +52,8 @@ parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial por
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
 parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
-parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus TCP. Defaults to 502')
+parser.add_argument('--tcp-port', default='502', type=int, help='Port for MODBUS TCP. Defaults to 502')
+parser.add_argument('--set-modbus-timeout',default='1',type=float, help='Response time-out for MODBUS devices')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbose',action='store_true' ,help='blah')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
@@ -363,7 +364,7 @@ if True:
         if args.rtu_parity=="even":
             parity = "E"
 
-        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=1)
+        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
 
     elif args.tcp:
         master = TCPModbusClient(args.tcp, args.tcp_port)
