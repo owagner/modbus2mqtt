@@ -42,7 +42,7 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-version="0.1"
+version="0.2"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
@@ -54,14 +54,13 @@ parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'
 parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
 parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus TCP. Defaults to 502')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
-parser.add_argument('--verbose',action='store_true' ,help='blah')
-parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
+parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=all')
+parser.add_argument('--autoremove',action='store_false',help='Automatically remove poller if modbus communication has failed three times.')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
 
 args=parser.parse_args()
-verbosity=False
-verbosity=args.verbose
+verbosity=args.verbosity
 addToHass=False
 addToHass=args.add_to_homeassistant
 
@@ -79,7 +78,7 @@ globaltopic=args.mqtt_topic
 if not globaltopic.endswith("/"):
     globaltopic+="/"
 
-if verbosity:
+if verbosity>=0:
     print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
 
 master=None
@@ -99,7 +98,7 @@ class Device:
         self.occupiedTopics=[]
         self.writableReferences=[]
         self.slaveid=slaveid
-        if verbosity:
+        if verbosity>=2:
             print('Added new device \"'+self.name+'\"')
 
 
@@ -142,43 +141,55 @@ class Poller:
 
     def poll(self):
             result = None
-            failed = False
-            try:
-                if self.functioncode == 3:
-                    result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
-                    if result.function_code < 0x80:
-                        data = result.registers
-                    else:
-                        failed = True
-                if self.functioncode == 1:
-                    result = master.read_coils(self.reference, self.size, unit=self.slaveid)
-                    if result.function_code < 0x80:
-                        data = result.bits
-                    else:
-                        failed = True
+            if master.is_socket_open()==True:
+                failed = False
+                try:
+                    if self.functioncode == 3:
+                        result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
+                        if result.function_code < 0x80:
+                            data = result.registers
+                        else:
+                            failed = True
+                    if self.functioncode == 1:
+                        result = master.read_coils(self.reference, self.size, unit=self.slaveid)
+                        if result.function_code < 0x80:
+                            data = result.bits
+                        else:
+                            failed = True
 
-                if self.functioncode == 2:
-                    result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
-                    if result.function_code < 0x80:
-                        data = result.bits
+                    if self.functioncode == 2:
+                        result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
+                        if result.function_code < 0x80:
+                            data = result.bits
+                        else:
+                            failed = True
+                    if self.functioncode == 4:
+                        result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
+                        if result.function_code < 0x80:
+                            data = result.registers
+                        else:
+                            failed = True
+                    if not failed:
+                        if verbosity>=3:
+                            print("Read MODBUS, FC:"+str(self.functioncode)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
+                        for ref in self.readableReferences:
+                            ref.checkPublish(data,self.topic)
                     else:
-                        failed = True
-                if self.functioncode == 4:
-                    result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
-                    if result.function_code < 0x80:
-                        data = result.registers
-                    else:
-                        failed = True
-                if not failed:
-                    for ref in self.readableReferences:
-                        ref.checkPublish(data,self.topic)
+                        if verbosity>=1:
+                            print("Slave device "+str(self.slaveid)+" responded with error code: "+str(result.function_code))
+                except:
+                    failed = True
+                    if verbosity>=1:
+                        print("Error talking to slave device:"+str(self.slaveid)+", trying again...")
+                if args.autoremove:
+                    self.failCount(failed)
+            else:
+                if master.connect():
+                    if verbosity >= 1:
+                        print("MODBUS connected successfully")
                 else:
-                    print("Slave device "+str(self.slaveid)+" responded with error code.")
-            except:
-                failed = True
-                print("Error talking to slave device "+str(self.slaveid)+" (CRC error or timeout)")
-            if args.autoremove:
-                self.failCount(failed)
+                    if verbosity >= 1:
+                        print("MODBUS connection error, trying again...")
 
     def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
@@ -197,6 +208,9 @@ class Poller:
                         self.readableReferences.append(myRef)
                         if "w" not in myRef.rw:
                             referenceList.append(myRef)
+                            if verbosity >= 2:
+                                print('Added new reference \"' + myRef.topic + '\"')
+
                     else:
                         print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" is not in range ("+str(self.reference)+" to "+str(int(self.reference+self.size))+") of poller \""+self.topic+"\", therefore ignoring it for polling.")
                 if "w" in myRef.rw:
@@ -234,9 +248,19 @@ class Reference:
             return True
 
     def checkPublish(self,result,topic):
-        if self.lastval != result[self.relativeReference]:
-            self.lastval= result[self.relativeReference]
-            mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=0,retain=True)
+        # Only publish messages after the initial connection has been made. If it became disconnected then the offline buffer will store messages,
+        # but only after the intial connection was made.
+        if mqc.initial_connection_made == True:
+            if self.lastval != result[self.relativeReference]:
+                self.lastval= result[self.relativeReference]
+                try:
+                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=1,retain=True)
+                    if verbosity>=3:
+                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval)+" RC:"+str(publish_result.rc))
+                except:
+                    if verbosity>=1:
+                        print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
+
         
 pollers=[]
 
@@ -301,15 +325,18 @@ def messagehandler(mqc,userdata,msg):
                     result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
                     try:
                         if result.function_code < 0x80:
-                            if verbosity:
+                            if verbosity>=3:
                                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                         else:
-                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                            if verbosity>=1:
+                                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
             
                     except NameError:
-                        print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
+                        if verbosity>=1:
+                            print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
             else:
-                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not \"True\" or \"False\".")
+                if verbosity >= 1:
+                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not \"True\" or \"False\".")
 
 
         if myRef.writefunctioncode == 6:
@@ -325,60 +352,116 @@ def messagehandler(mqc,userdata,msg):
                 result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
                 try:
                     if result.function_code < 0x80:
-                        if verbosity:
+                        if verbosity>=3:
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                     else:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                        if verbosity>=1:
+                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
                 except NameError:
-                    print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
+                    if verbosity >= 1:
+                        print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
             else:
-                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
+                if verbosity >= 1:
+                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
         
 def connecthandler(mqc,userdata,flags,rc):
-    if verbosity: 
-        print("Connected to MQTT broker with rc=%d" % (rc))
-    mqc.subscribe(globaltopic+"+/set/+")
-    mqc.publish(globaltopic+"connected","True",qos=1,retain=True)
+    if rc == 0:
+        mqc.initial_connection_made = True
+        if verbosity>=2:
+            print("MQTT Broker connected succesfully: " + args.mqtt_host + ":" + str(args.mqtt_port))
+        mqc.subscribe(globaltopic + "+/set/+")
+        if verbosity>=2:
+            print("Subscribed to MQTT topic: "+globaltopic + "+/set/+")
+        mqc.publish(globaltopic + "connected", "True", qos=1, retain=True)
+    elif rc == 1:
+        if verbosity>=1:
+            print("MQTT Connection refused – incorrect protocol version")
+    elif rc == 2:
+        if verbosity>=1:
+            print("MQTT Connection refused – invalid client identifier")
+    elif rc == 3:
+        if verbosity>=1:
+            print("MQTT Connection refused – server unavailable")
+    elif rc == 4:
+        if verbosity>=1:
+            print("MQTT Connection refused – bad username or password")
+    elif rc == 5:
+        if verbosity>=1:
+            print("MQTT Connection refused – not authorised")
 
 def disconnecthandler(mqc,userdata,rc):
-    if verbosity:
-        print("Disconnected from MQTT broker with rc=%d" % (rc))
+    if verbosity >= 2:
+        print("MQTT Disconnected, RC:"+str(rc))
+
 
 if True:
+#Setup MODBUS Master
+    if args.rtu:
+
+        if args.rtu_parity == "none":
+            parity = "N"
+        if args.rtu_parity == "odd":
+            parity = "O"
+        if args.rtu_parity == "even":
+            parity = "E"
+
+        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits=1, bytesize=8, parity=parity,
+                                    baudrate=int(args.rtu_baud), timeout=1)
+
+    elif args.tcp:
+        master = TCPModbusClient(args.tcp, args.tcp_port,client_id="foo123", clean_session=False)
+    else:
+        print("You must specify a modbus access method, either --rtu or --tcp")
+        sys.exit(1)
+
+#Setup MQTT Broker
     clientid=globaltopic + "-" + str(time.time())
     mqc=mqtt.Client(client_id=clientid)
     mqc.on_connect=connecthandler
     mqc.on_message=messagehandler
     mqc.on_disconnect=disconnecthandler
     mqc.will_set(globaltopic+"connected","True",qos=2,retain=True)
-    mqc.disconnected = True
-    mqc.connect(args.mqtt_host,args.mqtt_port,60)
-    mqc.loop_start()
-    if args.rtu:
-        
-        if args.rtu_parity=="none":
-            parity = "N"
-        if args.rtu_parity=="odd":
-            parity = "O"
-        if args.rtu_parity=="even":
-            parity = "E"
+    mqc.initial_connection_attempted = False
+    mqc.initial_connection_made = False
 
-        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=1)
-
-    elif args.tcp:
-        master = TCPModbusClient(args.tcp, args.tcp_port)
-    else:
-        print("You must specify a modbus access method, either --rtu or --tcp")
-        sys.exit(1)
-    master.connect()
-
+#Setup HomeAssistant
     if(addToHass):
         adder=addToHomeAssistant.HassConnector(mqc,globaltopic,verbosity)
         adder.addAll(referenceList)
 
+#Main Loop
+modbus_connected = False
 while control.runLoop:
-    for p in pollers:
-        p.checkPoll()
+    if not modbus_connected:
+        print("Connecting to MODBUS...")
+        modbus_connected = master.connect()
+        if modbus_connected:
+            if verbosity >= 2:
+                print("MODBUS connected successfully")
+        else:
+            if verbosity >= 1:
+                print("MODBUS connection error, trying again...")
+
+    if not mqc.initial_connection_attempted:
+        try:
+            print("Connecting to MQTT Broker: " + args.mqtt_host + ":" + str(args.mqtt_port) + "...")
+            mqc.connect(args.mqtt_host, args.mqtt_port, 60)
+            mqc.initial_connection_attempted = True #Once we have connected the mqc loop will take care of reconnections.
+            mqc.loop_start()
+            if verbosity >= 1:
+                print("MQTT Loop started")
+        except:
+            if verbosity>=1:
+                print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(args.mqtt_port) + ", check LAN/Internet connection, trying again...")
+
+    if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
+        try:
+            for p in pollers:
+                p.checkPoll()
+        except:
+            if verbosity>=1:
+                print("Exception Error when polling or publishing, trying again...")
+
     time.sleep(args.set_loop_break)
 
 master.close()
