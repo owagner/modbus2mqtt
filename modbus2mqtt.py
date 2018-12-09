@@ -54,7 +54,7 @@ parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'
 parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
 parser.add_argument('--tcp-port', default='502', type=int, help='Port for Modbus TCP. Defaults to 502')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
-parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=all')
+parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=mb writes, 4=all')
 parser.add_argument('--autoremove',action='store_false',help='Automatically remove poller if modbus communication has failed three times.')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
@@ -170,7 +170,7 @@ class Poller:
                         else:
                             failed = True
                     if not failed:
-                        if verbosity>=3:
+                        if verbosity>=4:
                             print("Read MODBUS, FC:"+str(self.functioncode)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
                         for ref in self.readableReferences:
                             ref.checkPublish(data,self.topic)
@@ -255,7 +255,7 @@ class Reference:
                 self.lastval= result[self.relativeReference]
                 try:
                     publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=1,retain=True)
-                    if verbosity>=3:
+                    if verbosity>=4:
                         print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval)+" RC:"+str(publish_result.rc))
                 except:
                     if verbosity>=1:
