@@ -18,7 +18,7 @@
 # rate: float 0.0 to some really big number
 #
 # Example poller-object:
-# poll,someTopic,1,2,5,1,1.0
+# poll,someTopic,1,2,5,coil,1.0
 # Will poll states of 5 coils from slave device 1 once a second, starting at coil 2.
 #
 #################################################################################
