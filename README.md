@@ -20,7 +20,7 @@ See https://github.com/mqtt-smarthome for a rationale and architectural overview
 
 Why spicier?
 ------------
-modbus2mqtt by Oliver Wagner is very nicely written but it has some caveats:
+modbus2mqtt by Oliver Wagner is very nicely written but it has some downsides:
 - polling of consecutive references (coils/registers) is not done within a single modbus
   request. Instead there is a modbus request for every single reference which dramatically
   limits the performance of the whole bus.
@@ -31,7 +31,7 @@ modbus2mqtt by Oliver Wagner is very nicely written but it has some caveats:
 
 These issues are not likely to be resolved in modbus2mqtt because it has not seen any development in a while. So I decided to do a bit of a rewrite and change a couple of things.
 
-A new structure of coil/register definitions was devised in order to poll consecutive registers in one request. Unfortunately this breaks compatibility with the original register definition files but there is no way around it 
+A new structure of coil/register definitions was devised in order to poll consecutive registers in one request. Unfortunately this breaks compatibility with the original register definition files but there is no way around it.
 
 Main improvements over modbus2mqtt:
 - more abstraction when writing to coils/registers using mqtt. Writing is now
@@ -71,8 +71,8 @@ Usage
      
 Configuration file
 -------------------
-The Modbus registers/coils which are to be polled are defined in a CSV file.
-There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. Poller objects define the modbus registers to read/write. References define what topic should be written from the Poller MODBUS registers.
+The Modbus data which is to be polled is defined in a CSV file.
+There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. In the "Poller" object we define the type of the modbus data (coils, holding registers, input status, input registers) and how the request to the device should look like (which references are to be read, for example: holding registers at references 0 to 10). With the reference object we define (among other things) to which topic the data of a certain data point (registers, coil..) is going to be published.
 
 Refer to the example.csv for more details.
 
