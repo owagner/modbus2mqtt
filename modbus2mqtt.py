@@ -56,7 +56,7 @@ parser.add_argument('--tcp-port', default='502', type=int, help='Port for MODBUS
 parser.add_argument('--set-modbus-timeout',default='1',type=float, help='Response time-out for MODBUS devices')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=mb writes, 4=all')
-parser.add_argument('--autoremove',action='store_false',help='Automatically remove poller if modbus communication has failed three times.')
+parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
 
