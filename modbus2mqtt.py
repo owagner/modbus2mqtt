@@ -48,6 +48,8 @@ parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
 parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server port. Defaults to 1883')
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
+parser.add_argument('--mqtt-user', default=None, help='Username for authentication (optional)')
+parser.add_argument('--mqtt-pass', default="", help='Password for authentication (optional)')
 parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
@@ -423,6 +425,8 @@ if True:
     mqc.will_set(globaltopic+"connected","True",qos=2,retain=True)
     mqc.initial_connection_attempted = False
     mqc.initial_connection_made = False
+    if args.mqtt_user:
+        mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
 
 #Setup HomeAssistant
     if(addToHass):
