@@ -48,6 +48,8 @@ parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
 parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server port. Defaults to 1883')
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
+parser.add_argument('--mqtt-user', default=None, help='Username for authentication (optional)')
+parser.add_argument('--mqtt-pass', default="", help='Password for authentication (optional)')
 parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
@@ -56,7 +58,7 @@ parser.add_argument('--tcp-port', default='502', type=int, help='Port for MODBUS
 parser.add_argument('--set-modbus-timeout',default='1',type=float, help='Response time-out for MODBUS devices')
 parser.add_argument('--config', required=True, help='Configuration file. Required!')
 parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=mb writes, 4=all')
-parser.add_argument('--autoremove',action='store_false',help='Automatically remove poller if modbus communication has failed three times.')
+parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
 
@@ -423,6 +425,8 @@ if True:
     mqc.will_set(globaltopic+"connected","True",qos=2,retain=True)
     mqc.initial_connection_attempted = False
     mqc.initial_connection_made = False
+    if args.mqtt_user:
+        mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
 
 #Setup HomeAssistant
     if(addToHass):
