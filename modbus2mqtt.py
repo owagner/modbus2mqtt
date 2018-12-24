@@ -215,7 +215,7 @@ class Poller:
                                 print('Added new reference \"' + myRef.topic + '\"')
 
                     else:
-                        print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" is not in range ("+str(self.reference)+" to "+str(int(self.reference+self.size))+") of poller \""+self.topic+"\", therefore ignoring it for polling.")
+                        print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" is not in range ("+str(self.reference)+" to "+str(int(self.reference+self.size-1))+") of poller \""+self.topic+"\", therefore ignoring it for polling.")
                 if "w" in myRef.rw:
                     if self.functioncode == 3: #holding registers
                         myRef.writefunctioncode=6 #preset single register
