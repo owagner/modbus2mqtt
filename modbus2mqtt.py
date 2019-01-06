@@ -34,6 +34,7 @@ import io
 import sys
 import csv
 import signal
+import random
 
 import addToHomeAssistant
 
@@ -61,6 +62,7 @@ parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times.')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
+
 
 args=parser.parse_args()
 verbosity=args.verbosity
@@ -114,7 +116,7 @@ class Poller:
         self.dataType=dataType
         self.reference=int(reference)
         self.size=int(size)
-        self.next_due=0
+        self.next_due=time.clock_gettime(0)+self.rate*random.uniform(0,1)
         self.last = None
         self.readableReferences=[]
         self.device=None
