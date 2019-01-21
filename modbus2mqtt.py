@@ -42,7 +42,7 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-version="0.2"
+version="0.3"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
@@ -129,6 +129,8 @@ class Poller:
             device = Device(self.topic,slaveid)
             deviceList.append(device)
             self.device=device
+        if verbosity>=2:
+            print("Added new Poller "+str(self.topic)+","+str(self.functioncode)+","+str(self.dataType)+","+str(self.reference)+","+str(self.size)+",")
 
 
     def failCount(self,failed):
@@ -174,7 +176,8 @@ class Poller:
                             failed = True
                     if not failed:
                         if verbosity>=4:
-                            print("Read MODBUS, FC:"+str(self.functioncode)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
+                            print("Read MODBUS, FC:"+str(self.functioncode)+", DataType:"+str(self.dataType)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
+                            print("Read MODBUS, DATA:"+str(data))
                         for ref in self.readableReferences:
                             ref.checkPublish(data,self.topic)
                     else:
@@ -254,8 +257,13 @@ class Reference:
         # Only publish messages after the initial connection has been made. If it became disconnected then the offline buffer will store messages,
         # but only after the intial connection was made.
         if mqc.initial_connection_made == True:
-            if self.lastval != result[self.relativeReference]:
-                self.lastval= result[self.relativeReference]
+            if self.poller.dataType == "int32":
+                val = result[self.relativeReference]*256 + result[self.relativeReference+1]
+            else:
+                val = result[self.relativeReference]
+
+            if self.lastval != val:
+                self.lastval= val
                 try:
                     publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=1,retain=True)
                     if verbosity>=4:
@@ -289,6 +297,9 @@ with open(args.config,"r") as csvfile:
             if row["col5"] == "input_status":
                 functioncode = 2
                 dataType="bool"
+            if row["col5"] == "input_register_32BE":
+                functioncode = 4
+                dataType="int32"
             rate = float(row["col6"])
             slaveid = int(row["col2"])
             reference = int(row["col3"])
@@ -459,18 +470,17 @@ while control.runLoop:
                 print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(args.mqtt_port) + ", check LAN/Internet connection, trying again...")
 
     if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
-        try:
-            for p in pollers:
-                p.checkPoll()
-        except:
-            if verbosity>=1:
-                print("Exception Error when polling or publishing, trying again...")
+        if modbus_connected:
+            try:
+                for p in pollers:
+                    p.checkPoll()
+            except:
+                if verbosity>=1:
+                    print("Exception Error when polling or publishing, trying again...")
 
     time.sleep(args.set_loop_break)
 
 master.close()
 #adder.removeAll(referenceList)
 sys.exit(1)
-
-
 
