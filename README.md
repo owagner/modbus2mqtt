@@ -11,10 +11,10 @@ Provided under the terms of the MIT license.
 
 Overview
 --------
-spicierModbus2mqtt is a Modbus master which continously polls slaves and publishes
+spicierModbus2mqtt is a Modbus master which continuously polls slaves and publishes
 values via MQTT.
 
-It is intended as a building block in heterogenous smart home environments where 
+It is intended as a building block in heterogeneous smart home environments where 
 an MQTT message broker is used as the centralized message bus.
 See https://github.com/mqtt-smarthome for a rationale and architectural overview.
 
@@ -38,15 +38,17 @@ Main improvements over modbus2mqtt:
   possible without having to know slave id, reference, function code etc.
 - specific coils/registers can be made read only
 - multiple slave devices on one bus are now fully supported
-- polling speed has been increased sgnificantly. With modbus RTU @ 38400 baud
+- polling speed has been increased significantly. With modbus RTU @ 38400 baud
   more than 80 transactions per second have been achieved.
-- switched over to pymodbus which is in active development
+- switched over to pymodbus which is in active development.
+- Improved error handling, the software will continuously retry when the network or device goes down.
 
 There is still a lot of room for improvement! Especially in the realm of
-- error handling
 - documentation
 - examples
 - code style
+- scaling of modbus registers before being sent to MQTT. 
+- process deadbands for registers so MQTT values are only sent when the modbus register goes above or below the deadband.
 ...
 
 So be careful :-)
@@ -66,16 +68,25 @@ Installation of dependencies
 Usage
 -----
 * example for rtu and mqtt broker on localhost: python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
-* example for tcp slave and mqtt broker on localhost: python3 modbus2mqtt.py --tcp localhost --config testing.csv
+* example for tcp slave and mqtt broker
+    on localhost: python3 modbus2mqtt.py --tcp localhost --config testing.csv
+    remotely:     python3 modbus2mqtt.py --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org
 
      
 Configuration file
 -------------------
 The Modbus data which is to be polled is defined in a CSV file.
-There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. In the "Poller" object we define the type of the modbus data (coils, holding registers, input status, input registers) and how the request to the device should look like (which references are to be read, for example: holding registers at references 0 to 10). With the reference object we define (among other things) to which topic the data of a certain data point (registers, coil..) is going to be published.
-
+There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. In  the "Poller" object we define the type of the modbus data and how the request to the device should look like (which modbus references are to be read, for example: holding registers at references 0 to 10). With the reference object we define (among other things) to which topic the data of a certain data point (registers, coil..) is going to be published.
+modbus references are always used as an offset. E.g. to read 400020 you would use reference 20 to 
 Refer to the example.csv for more details.
 
+Use "coils", for modbus functioncode 1 
+Use "input status", for modbus functioncode 2
+Use "holding registers", for modbus functioncode 3
+Use "input registers", for modbus functioncode 4
+Use "input registers_32BE", for modbus functioncode 4 where the two consecutive registers will be merged into a 32int.
+
+Reference objects link to the modbus reference address and define specific details about that register or bit.
 Example:
 
 poller-object:
@@ -126,7 +137,7 @@ the broker (1) and to the Modbus interface (2).
 Writing to Modbus coils and registers
 ------------------------------------------------
 
-spiciermodbus2mqtt subscibes to:
+spiciermodbus2mqtt subscribes to:
 
 "prefix/poller topic/set/reference topic"
 
