@@ -35,6 +35,7 @@ import sys
 import csv
 import signal
 import random
+import ssl
 
 import addToHomeAssistant
 
@@ -47,10 +48,14 @@ version="0.3"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
-parser.add_argument('--mqtt-port', default='1883', type=int, help='MQTT server port. Defaults to 1883')
+parser.add_argument('--mqtt-port', default=None, type=int, help='Defaults to 8883 for TLS or 1883 for non-TLS')
 parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
 parser.add_argument('--mqtt-user', default=None, help='Username for authentication (optional)')
 parser.add_argument('--mqtt-pass', default="", help='Password for authentication (optional)')
+parser.add_argument('--mqtt-use-tls', action='store_true')
+parser.add_argument('--mqtt-insecure', action='store_true')
+parser.add_argument('--mqtt-cacerts', default=None, help="Path to keychain including ")
+parser.add_argument('--mqtt-tls-version', default=None, help='TLS protocol version, can be one of tlsv1.2 tlsv1.1 or tlsv1')
 parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial port')
 parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
 parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
@@ -384,7 +389,7 @@ def connecthandler(mqc,userdata,flags,rc):
     if rc == 0:
         mqc.initial_connection_made = True
         if verbosity>=2:
-            print("MQTT Broker connected succesfully: " + args.mqtt_host + ":" + str(args.mqtt_port))
+            print("MQTT Broker connected succesfully: " + args.mqtt_host + ":" + str(mqtt_port))
         mqc.subscribe(globaltopic + "+/set/+")
         if verbosity>=2:
             print("Subscribed to MQTT topic: "+globaltopic + "+/set/+")
@@ -409,6 +414,11 @@ def disconnecthandler(mqc,userdata,rc):
     if verbosity >= 2:
         print("MQTT Disconnected, RC:"+str(rc))
 
+def loghandler(mgc, userdata, level, buf):
+    if verbosity >= 4:
+        print("MQTT LOG:" + buf)
+
+
 
 if True:
 #Setup MODBUS Master
@@ -430,16 +440,54 @@ if True:
         sys.exit(1)
 
 #Setup MQTT Broker
+
+    mqtt_port = args.mqtt_port
+
+    if mqtt_port is None:
+        if args.mqtt_use_tls:
+            mqtt_port = 8883
+        else:
+            mqtt_port = 1883
+
     clientid=globaltopic + "-" + str(time.time())
     mqc=mqtt.Client(client_id=clientid)
     mqc.on_connect=connecthandler
     mqc.on_message=messagehandler
     mqc.on_disconnect=disconnecthandler
+    mqc.on_log= loghandler
     mqc.will_set(globaltopic+"connected","True",qos=2,retain=True)
     mqc.initial_connection_attempted = False
     mqc.initial_connection_made = False
-    if args.mqtt_user:
+    if args.mqtt_user or args.mqtt_pass:
         mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
+
+    if args.mqtt_use_tls:
+
+        if args.mqtt_tls_version == "tlsv1.2":
+            tls_version = ssl.PROTOCOL_TLSv1_2
+        elif args.mqtt_tls_version == "tlsv1.1":
+            tls_version = ssl.PROTOCOL_TLSv1_1
+        elif args.mqtt_tls_version == "tlsv1":
+            tls_version = ssl.PROTOCOL_TLSv1
+        elif args.mqtt_tls_version is None:
+            tls_version = None
+        else:
+            if verbosity >= 2:
+                print("Unknown TLS version - ignoring")
+            tls_version = None
+
+
+        if args.mqtt_insecure:
+            cert_regs = ssl.CERT_NONE
+        else:
+            cert_regs = ssl.CERT_REQUIRED
+
+        mqc.tls_set(ca_certs=args.mqtt_cacerts, certfile= None, keyfile=None, cert_reqs=cert_regs, tls_version=tls_version)
+
+        if args.mqtt_insecure:
+            mqc.tls_insecure_set(True)
+
+
 
 #Setup HomeAssistant
     if(addToHass):
@@ -460,16 +508,16 @@ while control.runLoop:
                 print("MODBUS connection error, trying again...")
 
     if not mqc.initial_connection_attempted:
-        try:
-            print("Connecting to MQTT Broker: " + args.mqtt_host + ":" + str(args.mqtt_port) + "...")
-            mqc.connect(args.mqtt_host, args.mqtt_port, 60)
+       try:
+            print("Connecting to MQTT Broker: " + args.mqtt_host + ":" + str(mqtt_port) + "...")
+            mqc.connect(args.mqtt_host, mqtt_port, 60)
             mqc.initial_connection_attempted = True #Once we have connected the mqc loop will take care of reconnections.
             mqc.loop_start()
             if verbosity >= 1:
                 print("MQTT Loop started")
-        except:
+       except:
             if verbosity>=1:
-                print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(args.mqtt_port) + ", check LAN/Internet connection, trying again...")
+              print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(mqtt_port) + ", check LAN/Internet connection, trying again...")
 
     if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
         if modbus_connected:
