@@ -455,7 +455,7 @@ if True:
     mqc.on_message=messagehandler
     mqc.on_disconnect=disconnecthandler
     mqc.on_log= loghandler
-    mqc.will_set(globaltopic+"connected","True",qos=2,retain=True)
+    mqc.will_set(globaltopic+"connected","False",qos=2,retain=True)
     mqc.initial_connection_attempted = False
     mqc.initial_connection_made = False
     if args.mqtt_user or args.mqtt_pass:
