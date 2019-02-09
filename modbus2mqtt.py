@@ -489,15 +489,6 @@ if True:
 
 
 
-#Setup HomeAssistant
-    if(addToHass):
-        if verbosity > 0:
-            v = True
-        else:
-            v = False
-        adder=addToHomeAssistant.HassConnector(mqc,globaltopic,v)
-        adder.addAll(referenceList)
-
 #Main Loop
 modbus_connected = False
 while control.runLoop:
@@ -517,6 +508,14 @@ while control.runLoop:
             mqc.connect(args.mqtt_host, mqtt_port, 60)
             mqc.initial_connection_attempted = True #Once we have connected the mqc loop will take care of reconnections.
             mqc.loop_start()
+            #Setup HomeAssistant
+            if(addToHass):
+                if verbosity >= 1:
+                    v = True
+                else:
+                    v = False
+                adder=addToHomeAssistant.HassConnector(mqc,globaltopic,v)
+                adder.addAll(referenceList)
             if verbosity >= 1:
                 print("MQTT Loop started")
        except:
