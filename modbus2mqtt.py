@@ -491,7 +491,11 @@ if True:
 
 #Setup HomeAssistant
     if(addToHass):
-        adder=addToHomeAssistant.HassConnector(mqc,globaltopic,verbosity)
+        if verbosity > 0:
+            v = True
+        else:
+            v = False
+        adder=addToHomeAssistant.HassConnector(mqc,globaltopic,v)
         adder.addAll(referenceList)
 
 #Main Loop
