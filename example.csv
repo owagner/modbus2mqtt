@@ -38,6 +38,7 @@
 # topic: any string without spaces
 # reference: integer 0 to 65535 (This is the modbus offset and should match the poller ref)
 # rw: r, w or rw
+# data type: uint16, uint32BE, uint32LE, int16, int32BE, int32LE, string (defaults to uint16)
 #
 # Example reference-object:
 # ref,light0,2,rw
@@ -49,7 +50,7 @@
 #################################################################################
 # Columns:
 # type, topic, slaveid, reference, size, functioncode, rate
-# type, topic, reference, rw,      ,        
+# type, topic, reference, rw, data type,        
 #
 poll,kitchen,7,0,4,coil,0.002
 ref,light0,0,rw
