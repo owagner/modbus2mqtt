@@ -14,7 +14,9 @@
 # type: poll
 # topic: any string without spaces
 # slaveid: integer 1 to 254
-# reference: integer 0 to 65535 (This is the MODBUS offset only, for example for 400010, just use 10)
+# reference: integer 0 to 65535 (Modbus references are as transmitted on the wire.
+# In the traditional numbering scheme these would have been called offsets. E. g. to
+# read 400020 you would use reference 20.)
 # size: integer 0 to 65535 (No. of registers to poll, value must not exceed the limits of Modbus of course)
 # functionscode: coil, input_status, holding_register, input_register, input_register_32BE
 # rate: float 0.0 to some really big number
