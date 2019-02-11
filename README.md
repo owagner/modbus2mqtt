@@ -80,11 +80,11 @@ There are two types of rows, each with different columns; a "Poller" object and 
 Modbus references are as transmitted on the wire. In the traditional numbering scheme these would have been called offsets. E. g. to read 400020 you would use reference 20.
 Refer to the example.csv for more details.
 
-Use "coils", for modbus functioncode 1 
-Use "input status", for modbus functioncode 2
-Use "holding registers", for modbus functioncode 3
-Use "input registers", for modbus functioncode 4
-Use "input registers_32BE", for modbus functioncode 4 where the two consecutive registers will be merged into a 32int.
+* Use "coils", for modbus functioncode 1 
+* Use "input status", for modbus functioncode 2
+* Use "holding registers", for modbus functioncode 3
+* Use "input registers", for modbus functioncode 4
+* Use "input registers_32BE", for modbus functioncode 4 where the two consecutive registers will be merged into a 32int.
 
 Reference objects link to the modbus reference address and define specific details about that register or bit.
 Example:
