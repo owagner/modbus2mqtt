@@ -77,7 +77,7 @@ Configuration file
 -------------------
 The Modbus data which is to be polled is defined in a CSV file.
 There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. In  the "Poller" object we define the type of the modbus data and how the request to the device should look like (which modbus references are to be read, for example: holding registers at references 0 to 10). With the reference object we define (among other things) to which topic the data of a certain data point (registers, coil..) is going to be published.
-modbus references are always used as an offset. E.g. to read 400020 you would use reference 20 to 
+Modbus references are as transmitted on the wire. In the traditional numbering scheme these would have been called offsets. E. g. to read 400020 you would use reference 20.
 Refer to the example.csv for more details.
 
 Use "coils", for modbus functioncode 1 
@@ -113,7 +113,7 @@ ref,light2,2,rw
 ref,light3,3,rw
 ref,light4,4,rw
 ```
-This will poll from MODBUS slaveid 7, starting at coil offset 0, for 5 coils, 1.0 times a second.
+This will poll from Modbus slave id 7, starting at coil offset 0, for 5 coils, 1.0 times a second.
 
 The first coil 0 will then be sent as an MQTT message with topic modbus/kitchen/state/light0.
 
