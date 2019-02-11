@@ -214,6 +214,7 @@ class Poller:
         #check reference configuration and maybe add to this poller or to the list of writable things
         if myRef.topic not in self.device.occupiedTopics:
             self.device.occupiedTopics.append(myRef.topic)
+            
             if "r" in myRef.rw or "w" in myRef.rw:
                 myRef.device=self.device
                 if "r" in myRef.rw:
@@ -244,16 +245,17 @@ class Poller:
             print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
 class Reference:
-    def __init__(self,topic,reference,format,rw,poller):
+    def __init__(self,topic,reference,dtype,rw,poller):
         self.topic=topic
         self.reference=int(reference)
-        self.format=format.split(":",2)
+        #self.format=format.split(":",2)
         self.lastval=None
         self.rw=rw
         self.relativeReference=None
         self.writefunctioncode=None
         self.device=None
         self.poller=poller
+        self.dtype=dtype
 
     def checkSanity(self,reference,size):
         if self.reference in range(reference,size+reference):
@@ -264,10 +266,10 @@ class Reference:
         # Only publish messages after the initial connection has been made. If it became disconnected then the offline buffer will store messages,
         # but only after the intial connection was made.
         if mqc.initial_connection_made == True:
-            if self.poller.dataType == "int32":
-                val = result[self.relativeReference]*256 + result[self.relativeReference+1]
-            else:
-                val = result[self.relativeReference]
+           # if self.poller.dataType == "int32":
+            #    val = result[self.relativeReference]*256 + result[self.relativeReference+1]
+           # else:
+            #    val = result[self.relativeReference]
 
             if self.lastval != val:
                 self.lastval= val
@@ -304,9 +306,9 @@ with open(args.config,"r") as csvfile:
             if row["col5"] == "input_status":
                 functioncode = 2
                 dataType="bool"
-            if row["col5"] == "input_register_32BE":
-                functioncode = 4
-                dataType="int32"
+     #       if row["col5"] == "input_register_32BE":
+      #          functioncode = 4
+       #         dataType="int32"
             rate = float(row["col6"])
             slaveid = int(row["col2"])
             reference = int(row["col3"])
@@ -315,8 +317,9 @@ with open(args.config,"r") as csvfile:
             pollers.append(currentPoller)
             continue
         elif row["type"]=="reference" or row["type"]=="ref":
-            reference = int(row["col2"])
-            currentPoller.addReference(Reference(row["topic"],reference,"",row["col3"],currentPoller))
+
+            #reference = int(row["col2"])
+            currentPoller.addReference(Reference(row["topic"],row["col2"],"",row["col3"],currentPoller))
 
 def messagehandler(mqc,userdata,msg):
     if True:
