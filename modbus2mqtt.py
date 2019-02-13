@@ -309,7 +309,7 @@ class dataTypes:
             out=None
         return out
     def combineuint32BE(self,val):
-        out = val[0]*65536 + result[1]
+        out = val[0]*65536 + val[1]
         return str(out)
     def parseuint16(self,msg):
         try:
@@ -353,10 +353,9 @@ class Reference:
             if self.lastval != val:
                 self.lastval= val
                 try:
-
                     publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.dtype.combine(self.lastval),qos=1,retain=True)
                     if verbosity>=4:
-                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval))+" RC:"+str(publish_result.rc))
+                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+" value: " + str(self.dtype.combine(self.lastval))+" RC:"+str(publish_result.rc))
                 except:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval)))
