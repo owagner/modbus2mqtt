@@ -310,9 +310,6 @@ class dataTypes:
                 out = None
             else:
                 out = value&0xFFFF
-                
-                #else:
-                 #   out=value
         except:
             out=None
         return out
