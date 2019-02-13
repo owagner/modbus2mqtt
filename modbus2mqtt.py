@@ -36,6 +36,7 @@ import csv
 import signal
 import random
 import ssl
+import math
 
 import addToHomeAssistant
 
@@ -247,17 +248,28 @@ class Poller:
 class dataTypes:
     def __init__(self,conf):
         if conf.startswith("string"):
+            try:
+                length = int(conf[6:9])
+            except:
+                length = 2
+            if length > 100:
+                print("Data type string: length too long")
+                length = 100
+            if  math.fmod(length,2) != 0:
+                length=length-1
+                print("Data type string: length must be divisible by 2")
+            print("StRING "+str(length))
             self.parse=self.parseString
             self.combine=self.combineString
-            self.regAmount=8 #16 chars for now... todo: make this depend on parameter
-        elif conf == "int32LE":
-            self.parse=self.parseint32LE
-            self.combine=self.combineint32LE
-            self.regAmount=2          
-        elif conf == "int32BE":
-            self.regAmount=2
-            self.parse=self.parseint32BE
-            self.combine=self.combineint32BE
+            self.regAmount=length #16 chars for now... todo: make this depend on parameter
+        #elif conf == "int32LE":
+           # self.parse=self.parseint32LE
+           # self.combine=self.combineint32LE
+           # self.regAmount=2          
+        #elif conf == "int32BE":
+         #   self.regAmount=2
+          #  self.parse=self.parseint32BE
+           # self.combine=self.combineint32BE
         elif conf == "int16":
             self.regAmount=1         
             self.parse=self.parseint16
@@ -274,7 +286,6 @@ class dataTypes:
             self.regAmount=1          
             self.parse=self.parseuint16
             self.combine=self.combineuint16
-            print("blah: "+conf)
     
     def parseString(self,msg):
         pass
