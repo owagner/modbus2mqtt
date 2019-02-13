@@ -280,18 +280,31 @@ class dataTypes:
         pass
     def combineString(self,val):
         pass
+    
     def parseint32LE(self,msg):
         pass
     def combineint32LE(self,val):
         pass
+    
     def parseint32BE(self,msg):
         pass
     def combineint32BE(self,val):
         pass
+    
     def parseint16(self,msg):
-        pass
+        try:
+            value=int(msg)
+            if value > 32767 or value < -32768:
+                out = None
+            else:
+                out = ~value+1
+        except:
+            out=None
+        return out
     def combineint16(self,val):
-        pass
+        print(val)
+        return 0#str(int(~val+1))
+
     def parseuint32LE(self,msg):
         try:
             value=int(msg)
@@ -305,6 +318,7 @@ class dataTypes:
     def combineuint32LE(self,val):
         out = val[0]*65536 + val[1]
         return str(out)
+    
     def parseuint32BE(self,msg):
         try:
             value=int(msg)
@@ -318,6 +332,7 @@ class dataTypes:
     def combineuint32BE(self,val):
         out = val[0] + val[1]*65536
         return str(out)
+    
     def parseuint16(self,msg):
         try:
             value=int(msg)
@@ -327,6 +342,7 @@ class dataTypes:
             value=None
         return value
     def combineuint16(self,val):
+        print(val)
         return str(val)
 
 
