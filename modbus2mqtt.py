@@ -258,7 +258,6 @@ class dataTypes:
             if  math.fmod(length,2) != 0:
                 length=length-1
                 print("Data type string: length must be divisible by 2")
-            print("StRING "+str(length))
             self.parse=self.parseString
             self.combine=self.combineString
             self.regAmount=length #16 chars for now... todo: make this depend on parameter
