@@ -302,9 +302,7 @@ class dataTypes:
             if value > 4294967295 or value < 0:
                 out = None
             else:
-                out=[]
-                out.append(int(value/65536))
-                out.append(int(value - out[0]*65536 ))
+                out=[int(value>>16),int(value&0x00FFFF)]
         except:
             out=None
         return out
