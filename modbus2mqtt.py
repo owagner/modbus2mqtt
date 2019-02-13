@@ -297,13 +297,21 @@ class dataTypes:
             if value > 32767 or value < -32768:
                 out = None
             else:
-                out = ~value+1
+                out = value&0xFFFF
+                
+                #else:
+                 #   out=value
         except:
             out=None
         return out
     def combineint16(self,val):
-        print(val)
-        return 0#str(int(~val+1))
+        if (val[0] & 0x8000) > 0:
+            t = val[0]-1
+            t = ~t
+            
+            return "-"+str(t)
+        else:
+            return str(val[0])
 
     def parseuint32LE(self,msg):
         try:
