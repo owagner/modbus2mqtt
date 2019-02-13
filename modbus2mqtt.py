@@ -293,10 +293,6 @@ class dataTypes:
     def combineint16(self,val):
         pass
     def parseuint32LE(self,msg):
-        pass
-    def combineuint32LE(self,val):
-        pass
-    def parseuint32BE(self,msg):
         try:
             value=int(msg)
             if value > 4294967295 or value < 0:
@@ -306,8 +302,21 @@ class dataTypes:
         except:
             out=None
         return out
-    def combineuint32BE(self,val):
+    def combineuint32LE(self,val):
         out = val[0]*65536 + val[1]
+        return str(out)
+    def parseuint32BE(self,msg):
+        try:
+            value=int(msg)
+            if value > 4294967295 or value < 0:
+                out = None
+            else:
+                out=[int(value&0x0000FFFF),int(value>>16)]
+        except:
+            out=None
+        return out
+    def combineuint32BE(self,val):
+        out = val[0] + val[1]*65536
         return str(out)
     def parseuint16(self,msg):
         try:
