@@ -372,7 +372,7 @@ class Reference:
            # if self.poller.dataType == "int32":
             #    val = result[self.relativeReference]*256 + result[self.relativeReference+1]
            # else:
-            val = result[self.relativeReference:self.length]
+            val = result[self.relativeReference:(self.length+self.relativeReference)]
             if self.lastval != val:
                 self.lastval= val
                 try:
