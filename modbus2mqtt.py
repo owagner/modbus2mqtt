@@ -290,7 +290,8 @@ class dataTypes:
         pass
     def combineint32BE(self,val):
         pass
-    
+
+
     def parseint16(self,msg):
         try:
             value=int(msg)
@@ -306,12 +307,11 @@ class dataTypes:
         return out
     def combineint16(self,val):
         if (val[0] & 0x8000) > 0:
-            t = val[0]-1
-            t = ~t
-            
-            return "-"+str(t)
+            out = -((~val[0] & 0x7FFF)+1)
         else:
-            return str(val[0])
+            out = val[0]
+        return str(out)
+
 
     def parseuint32LE(self,msg):
         try:
@@ -326,7 +326,8 @@ class dataTypes:
     def combineuint32LE(self,val):
         out = val[0]*65536 + val[1]
         return str(out)
-    
+
+
     def parseuint32BE(self,msg):
         try:
             value=int(msg)
@@ -350,8 +351,7 @@ class dataTypes:
             value=None
         return value
     def combineuint16(self,val):
-        print(val)
-        return str(val)
+        return str(val[0])
 
 
 class Reference:
@@ -488,7 +488,7 @@ def messagehandler(mqc,userdata,msg):
                         print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
             else:
                 if verbosity >= 1:
-                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not an integer between 0 and 65535.")
+                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Value does not fulfill criteria.")
         
 def connecthandler(mqc,userdata,flags,rc):
     if rc == 0:
