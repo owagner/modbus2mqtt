@@ -244,6 +244,85 @@ class Poller:
         else:
             print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
+class dataTypes:
+    def __init__(self,conf):
+        if conf.startswith("string"):
+            self.parse=self.parseString
+            self.combine=self.combineString
+            self.regAmount=8 #16 chars for now... todo: make this depend on parameter
+        elif conf == "int32LE":
+            self.parse=self.parseint32LE
+            self.combine=self.combineint32LE
+            self.regAmount=2          
+        elif conf == "int32BE":
+            self.regAmount=2
+            self.parse=self.parseint32BE
+            self.combine=self.combineint32BE
+        elif conf == "int16":
+            self.regAmount=1         
+            self.parse=self.parseint16
+            self.combine=self.combineint16
+        elif conf == "uint32LE":
+            self.regAmount=2          
+            self.parse=self.parseuint32LE
+            self.combine=self.combineuint32LE
+        elif conf == "uint32BE":
+            self.regAmount=2          
+            self.parse=self.parseuint32BE
+            self.combine=self.combineuint32BE
+        elif conf == "uint16" or conf == "": #default to uint16
+            self.regAmount=1          
+            self.parse=self.parseuint16
+            self.combine=self.combineuint16
+            print("blah: "+conf)
+    
+    def parseString(self,msg):
+        pass
+    def combineString(self,val):
+        pass
+    def parseint32LE(self,msg):
+        pass
+    def combineint32LE(self,val):
+        pass
+    def parseint32BE(self,msg):
+        pass
+    def combineint32BE(self,val):
+        pass
+    def parseint16(self,msg):
+        pass
+    def combineint16(self,val):
+        pass
+    def parseuint32LE(self,msg):
+        pass
+    def combineuint32LE(self,val):
+        pass
+    def parseuint32BE(self,msg):
+        try:
+            value=int(msg)
+            if value > 4294967295 or value < 0:
+                out = None
+            else:
+                out=[]
+                out.append(int(value/65536))
+                out.append(int(value - out[0]*65536 ))
+        except:
+            out=None
+        return out
+    def combineuint32BE(self,val):
+        out = val[0]*65536 + result[1]
+        return str(out)
+    def parseuint16(self,msg):
+        try:
+            value=int(msg)
+            if value > 65535 or value < 0:
+                value = None
+        except:
+            value=None
+        return value
+    def combineuint16(self,val):
+        return str(val)
+
+
 class Reference:
     def __init__(self,topic,reference,dtype,rw,poller):
         self.topic=topic
@@ -255,7 +334,8 @@ class Reference:
         self.writefunctioncode=None
         self.device=None
         self.poller=poller
-        self.dtype=dtype
+        self.dtype=dataTypes(dtype)
+        self.length=self.dtype.regAmount
 
     def checkSanity(self,reference,size):
         if self.reference in range(reference,size+reference):
@@ -269,17 +349,17 @@ class Reference:
            # if self.poller.dataType == "int32":
             #    val = result[self.relativeReference]*256 + result[self.relativeReference+1]
            # else:
-            val = result[self.relativeReference]
-
+            val = result[self.relativeReference:self.length]
             if self.lastval != val:
                 self.lastval= val
                 try:
-                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=1,retain=True)
+
+                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.dtype.combine(self.lastval),qos=1,retain=True)
                     if verbosity>=4:
-                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval)+" RC:"+str(publish_result.rc))
+                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval))+" RC:"+str(publish_result.rc))
                 except:
                     if verbosity>=1:
-                        print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
+                        print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval)))
 
         
 pollers=[]
@@ -317,9 +397,8 @@ with open(args.config,"r") as csvfile:
             pollers.append(currentPoller)
             continue
         elif row["type"]=="reference" or row["type"]=="ref":
-
             #reference = int(row["col2"])
-            currentPoller.addReference(Reference(row["topic"],row["col2"],"",row["col3"],currentPoller))
+            currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller))
 
 def messagehandler(mqc,userdata,msg):
     if True:
@@ -364,14 +443,7 @@ def messagehandler(mqc,userdata,msg):
 
 
         if myRef.writefunctioncode == 6:
-            try:
-                value=int(payload)
-                if value > 65535 or value < 0:
-                    value = None
-            except:
-                value=None
-            
-                    
+            value = myRef.dtype.parse(str(payload))
             if value is not None:
                 result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
                 try:
