@@ -302,7 +302,7 @@ class dataTypes:
             if value > 4294967295 or value < 0:
                 out = None
             else:
-                out=[int(value>>16),int(value&0x00FFFF)]
+                out=[int(value>>16),int(value&0x0000FFFF)]
         except:
             out=None
         return out
