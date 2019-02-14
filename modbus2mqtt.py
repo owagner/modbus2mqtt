@@ -146,7 +146,8 @@ class Poller:
             self.failcounter=0
         else:
             if self.failcounter==3:
-                self.disabled=True
+                if args.autoremove:
+                    self.disabled=True
                 print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+ " and functioncode "+str(self.functioncode)+" disabled due to the above error.")
             else:
                 self.failcounter=self.failcounter+1
@@ -195,8 +196,7 @@ class Poller:
                     failed = True
                     if verbosity>=1:
                         print("Error talking to slave device:"+str(self.slaveid)+", trying again...")
-                if args.autoremove:
-                    self.failCount(failed)
+                self.failCount(failed)
             else:
                 if master.connect():
                     if verbosity >= 1:
@@ -262,7 +262,6 @@ class dataTypes:
             self.combine=self.combineString
             self.stringLength=length
             self.regAmount=int(length/2)
-            #print("laenge: "+str(self.regAmount))
         #elif conf == "int32LE":
            # self.parse=self.parseint32LE
            # self.combine=self.combineint32LE
@@ -388,7 +387,6 @@ class Reference:
         self.writefunctioncode=None
         self.device=None
         self.poller=poller
-        print(dtype)
         self.dtype=dataTypes(dtype)
         self.length=self.dtype.regAmount
 
@@ -445,7 +443,6 @@ with open(args.config,"r") as csvfile:
             pollers.append(currentPoller)
             continue
         elif row["type"]=="reference" or row["type"]=="ref":
-            #reference = int(row["col2"])
             currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller))
 
 def messagehandler(mqc,userdata,msg):
