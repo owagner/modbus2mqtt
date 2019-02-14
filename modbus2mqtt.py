@@ -128,6 +128,7 @@ class Poller:
         self.device=None
         self.disabled=False
         self.failcounter=0
+        self.connected=False
 
         for myDev in deviceList:
             if myDev.name == self.topic:
@@ -144,13 +145,21 @@ class Poller:
     def failCount(self,failed):
         if not failed:
             self.failcounter=0
+            if not self.connected:
+                self.connected = True
+                mqc.publish(globaltopic + self.topic +"/connected", "True", qos=1, retain=True)
         else:
             if self.failcounter==3:
                 if args.autoremove:
                     self.disabled=True
-                print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+ " and functioncode "+str(self.functioncode)+" disabled due to the above error.")
+                    print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+ " and functioncode "+str(self.functioncode)+" disabled due to the above error.")
+                self.failcounter=4
+                self.connected = False
+                mqc.publish(globaltopic + self.topic +"/connected", "False", qos=1, retain=True)
+                
             else:
-                self.failcounter=self.failcounter+1
+                if self.failcounter<3:
+                    self.failcounter+=1
 
 
     def poll(self):
@@ -202,6 +211,11 @@ class Poller:
                     if verbosity >= 1:
                         print("MODBUS connected successfully")
                 else:
+                    for p in pollers:
+                        p.failed=True
+                        if p.failcounter<3:
+                            p.failcounter=3
+                        p.failCount(p.failed)
                     if verbosity >= 1:
                         print("MODBUS connection error, trying again...")
 
@@ -576,6 +590,8 @@ if True:
     mqc.on_disconnect=disconnecthandler
     mqc.on_log= loghandler
     mqc.will_set(globaltopic+"connected","False",qos=2,retain=True)
+    for p in pollers:
+        mqc.will_set(globaltopic+p.topic+"/connected","False",qos=2,retain=True)
     mqc.initial_connection_attempted = False
     mqc.initial_connection_made = False
     if args.mqtt_user or args.mqtt_pass:
@@ -619,6 +635,11 @@ while control.runLoop:
             if verbosity >= 2:
                 print("MODBUS connected successfully")
         else:
+            for p in pollers:
+                p.failed=True
+                if p.failcounter<3:
+                    p.failcounter=3
+                p.failCount(p.failed)
             if verbosity >= 1:
                 print("MODBUS connection error, trying again...")
 
