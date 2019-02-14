@@ -261,7 +261,11 @@ class Poller:
 
 class dataTypes:
     def __init__(self,conf):
-        if conf.startswith("string"):
+        if conf is None:
+            self.regAmount=1          
+            self.parse=self.parseuint16
+            self.combine=self.combineuint16
+        elif conf.startswith("string"):
             try:
                 length = int(conf[6:9])
             except:
@@ -296,11 +300,20 @@ class dataTypes:
             self.regAmount=2          
             self.parse=self.parseuint32BE
             self.combine=self.combineuint32BE
+        elif conf == "bool":
+            self.regAmount=1         
+            self.parse=self.parsebool
+            self.combine=self.combinebool
         elif conf == "uint16" or conf == "": #default to uint16
             self.regAmount=1          
             self.parse=self.parseuint16
             self.combine=self.combineuint16
     
+    def parsebool(self,msg):
+        return msg
+    def combinebool(self,val):
+        return str(val[0])
+
     def parseString(self,msg):
         out=[]
         if len(msg)<=self.stringLength:
@@ -401,7 +414,14 @@ class Reference:
         self.writefunctioncode=None
         self.device=None
         self.poller=poller
-        self.dtype=dataTypes(dtype)
+        self.dtype=None
+        if self.poller.functioncode == 1:
+            self.dtype=dataTypes("bool")
+            
+        elif self.poller.functioncode == 2:
+            self.dtype=dataTypes("bool")
+        else:
+            self.dtype=dataTypes(dtype)
         self.length=self.dtype.regAmount
 
     def checkSanity(self,reference,size):
