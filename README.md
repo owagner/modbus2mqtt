@@ -119,6 +119,16 @@ The first coil 0 will then be sent as an MQTT message with topic modbus/kitchen/
 
 The second coil 1 will then be sent as an MQTT message with topic modbus/kitchen/state/light1 and so on.
 
+Some other "intepretations" of register contents are also supported:
+```
+poll,garage,1,0,10,holding_register,2
+ref,counter1,0,rw,uint32BE 
+ref,counter2,2,rw,int16
+ref,somestring,3,rw,string6
+```
+This will poll 10 consecutive registers from Modbus slave id 1, starting at holding register 0.
+The last row now contains the data format. Supported values: uint32BE, uint32LE, int16, stringXXX, uint16 (default) with XXX being the string length in bytes.
+
 
 Topics
 ------
