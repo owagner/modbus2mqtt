@@ -260,7 +260,7 @@ class dataTypes:
                 print("Data type string: length must be divisible by 2")
             self.parse=self.parseString
             self.combine=self.combineString
-            self.regAmount=length #16 chars for now... todo: make this depend on parameter
+            self.regAmount=length 
         #elif conf == "int32LE":
            # self.parse=self.parseint32LE
            # self.combine=self.combineint32LE
