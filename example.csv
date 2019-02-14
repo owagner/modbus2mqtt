@@ -70,6 +70,9 @@ ref,doorbell,1,r
 ref,mailbox_sensor,2,r
 
 poll,garage,1,0,10,holding_register,2
-ref,counter1,0,rw,uint32BE #register 0 as low word, register 1 as high word
-ref,counter2,1,rw,int16 #treat the contents of register 1 as signed int. (note that counter1 overlaps counter2. This is possible and may be useful)
-ref,somestring,3,rw,string6 #registers 3, 4 and 5 as a 6 character string
+ref,counter1,0,rw,uint32BE
+#register 0 as low word, register 1 as high word
+ref,counter2,1,rw,int16
+#treat the contents of register 1 as signed int. (note that counter1 overlaps counter2. This is possible and may be useful)
+ref,somestring,3,rw,string
+#registers 3, 4 and 5 as a 6 character stringoll,garage,1,0,10,holding_register,2
