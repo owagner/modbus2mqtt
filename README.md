@@ -128,6 +128,7 @@ ref,somestring,3,rw,string6
 ```
 This will poll 10 consecutive registers from Modbus slave id 1, starting at holding register 0.
 The last row now contains the data format. Supported values: uint32BE, uint32LE, int16, stringXXX, uint16 (default) with XXX being the string length in bytes.
+Note that a uint32BE will of course span over two registers (0 and 1 in the above example) and that you can still define another reference object occupying the same registers. This might come in handy if you want to modify a small part of a string seperately.
 
 
 Topics
