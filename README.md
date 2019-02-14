@@ -101,6 +101,7 @@ ref,light0,2,rw
 ```
 The state of coil 2 will be published to mqtt with the topic modbus/someTopic/state/light0
 if column 3 contains an 'r'.
+
 If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
 column 3 contains a 'w', the new state will be written to the slave device.
 
@@ -127,7 +128,9 @@ ref,counter2,2,rw,int16
 ref,somestring,3,rw,string6
 ```
 This will poll 10 consecutive registers from Modbus slave id 1, starting at holding register 0.
+
 The last row now contains the data format. Supported values: uint32BE, uint32LE, int16, stringXXX, uint16 (default) with XXX being the string length in bytes.
+
 Note that a uint32BE will of course span over two registers (0 and 1 in the above example) and that you can still define another reference object occupying the same registers. This might come in handy if you want to modify a small part of a string seperately.
 
 
@@ -137,12 +140,12 @@ Values are published as strings to topic:
 
 "prefix/poller topic/state/reference topic"
 
-A value will only be published if it's textual representation has changed,
-e.g. _after_ formatting has been applied. The published MQTT messages have
+A value will only be published if it's raw data has changed,
+e.g. _before_ any formatting has been applied. The published MQTT messages have
 the retain flag set.
 
-A special topic "<prefix>/connected" is maintained. 
-It's a enum stating whether the module is currently running and connected to 
+A special topic "prefix/connected" is maintained. 
+It states whether the module is currently running and connected to 
 the broker (1) and to the Modbus interface (2).
 
 Writing to Modbus coils and registers
@@ -153,7 +156,7 @@ spiciermodbus2mqtt subscribes to:
 "prefix/poller topic/set/reference topic"
 
 
-say you want to write to a coil:
+If you want to write to a coil:
 
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "True"
 
