@@ -260,7 +260,9 @@ class dataTypes:
                 print("Data type string: length must be divisible by 2")
             self.parse=self.parseString
             self.combine=self.combineString
-            self.regAmount=length 
+            self.stringLength=length
+            self.regAmount=int(length/2)
+            #print("laenge: "+str(self.regAmount))
         #elif conf == "int32LE":
            # self.parse=self.parseint32LE
            # self.combine=self.combineint32LE
@@ -287,10 +289,25 @@ class dataTypes:
             self.combine=self.combineuint16
     
     def parseString(self,msg):
-        pass
+        out=[]
+        if len(msg)<=self.stringLength:
+            for x in range(1,len(msg)+1):
+                if math.fmod(x,2)>0:
+                    out.append(ord(msg[x-1])<<8)
+                else:
+                    pass
+                    out[int(x/2-1)]+=ord(msg[x-1])
+        else:
+            out = None
+        return out
     def combineString(self,val):
-        pass
-    
+        out=""
+        for x in val:
+            out+=chr(x>>8)
+            out+=chr(x&0x00FF)
+            print(val)
+        return out
+
     def parseint32LE(self,msg):
         pass
     def combineint32LE(self,val):
@@ -365,13 +382,13 @@ class Reference:
     def __init__(self,topic,reference,dtype,rw,poller):
         self.topic=topic
         self.reference=int(reference)
-        #self.format=format.split(":",2)
         self.lastval=None
         self.rw=rw
         self.relativeReference=None
         self.writefunctioncode=None
         self.device=None
         self.poller=poller
+        print(dtype)
         self.dtype=dataTypes(dtype)
         self.length=self.dtype.regAmount
 
@@ -384,9 +401,6 @@ class Reference:
         # Only publish messages after the initial connection has been made. If it became disconnected then the offline buffer will store messages,
         # but only after the intial connection was made.
         if mqc.initial_connection_made == True:
-           # if self.poller.dataType == "int32":
-            #    val = result[self.relativeReference]*256 + result[self.relativeReference+1]
-           # else:
             val = result[self.relativeReference:(self.length+self.relativeReference)]
             if self.lastval != val:
                 self.lastval= val
@@ -423,9 +437,6 @@ with open(args.config,"r") as csvfile:
             if row["col5"] == "input_status":
                 functioncode = 2
                 dataType="bool"
-     #       if row["col5"] == "input_register_32BE":
-      #          functioncode = 4
-       #         dataType="int32"
             rate = float(row["col6"])
             slaveid = int(row["col2"])
             reference = int(row["col3"])
