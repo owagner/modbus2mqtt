@@ -148,6 +148,8 @@ A special topic "prefix/connected" is maintained.
 It states whether the module is currently running and connected to 
 the broker (1) and to the Modbus interface (2).
 
+We also maintain a "connected"-Topic for each poller. This is useful when using Modbus RTU with multiple slave devices because a non-responsive device can be detected.
+
 Writing to Modbus coils and registers
 ------------------------------------------------
 
