@@ -232,13 +232,13 @@ class Poller:
             
             if "r" in myRef.rw or "w" in myRef.rw:
                 myRef.device=self.device
+                if verbosity >= 2:
+                    print('Added new reference \"' + myRef.topic + '\"')
                 if "r" in myRef.rw:
                     if myRef.checkSanity(self.reference,self.size):
                         self.readableReferences.append(myRef)
                         if "w" not in myRef.rw:
                             referenceList.append(myRef)
-                            if verbosity >= 2:
-                                print('Added new reference \"' + myRef.topic + '\"')
 
                     else:
                         print("Reference \""+str(myRef.reference)+"\" with topic "+myRef.topic+" is not in range ("+str(self.reference)+" to "+str(int(self.reference+self.size-1))+") of poller \""+self.topic+"\", therefore ignoring it for polling.")
