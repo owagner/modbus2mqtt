@@ -4,7 +4,7 @@ spicierModbus2mqtt
 
 Written and (C) 2018 Max Brueggemann <mail@maxbrueggemann.de> 
 
-Contains code from modbus2mqtt, written and (C) 2015 Oliver Wagner <owagner@tellerulam.com> 
+Contains code from modbus2mqtt, written and (C) 2015 Oliver Wagner <owagner@tellerulam.com>
   
 Provided under the terms of the MIT license.
 
@@ -84,7 +84,6 @@ Refer to the example.csv for more details.
 * Use "input status", for modbus functioncode 2
 * Use "holding registers", for modbus functioncode 3
 * Use "input registers", for modbus functioncode 4
-* Use "input registers_32BE", for modbus functioncode 4 where the two consecutive registers will be merged into a 32int.
 
 Reference objects link to the modbus reference address and define specific details about that register or bit.
 Example:
