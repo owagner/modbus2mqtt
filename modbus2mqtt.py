@@ -261,7 +261,7 @@ class Poller:
 
 class dataTypes:
     def __init__(self,conf):
-        if conf is None:
+        if conf is None or conf == "uint16" or conf == "":
             self.regAmount=1          
             self.parse=self.parseuint16
             self.combine=self.combineuint16
@@ -304,10 +304,6 @@ class dataTypes:
             self.regAmount=1         
             self.parse=self.parsebool
             self.combine=self.combinebool
-        elif conf == "uint16" or conf == "": #default to uint16
-            self.regAmount=1          
-            self.parse=self.parseuint16
-            self.combine=self.combineuint16
     
     def parsebool(self,msg):
         return msg
@@ -447,8 +443,8 @@ class Reference:
         
 pollers=[]
 
-# type, topic, slaveid,   ref, size, functioncode, rate
-# type, topic, reference, rw,      ,             ,
+# type, topic, slaveid,  ref,           size, functioncode, rate
+# type, topic, reference, rw, interpretation,      scaling,
 
 # Now let's read the config file
 with open(args.config,"r") as csvfile:
