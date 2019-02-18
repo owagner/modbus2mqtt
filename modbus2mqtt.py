@@ -421,7 +421,7 @@ class Reference:
         self.length=self.dtype.regAmount
 
     def checkSanity(self,reference,size):
-        if self.reference in range(reference,size+reference) and self.reference+self.length in range(reference,size+reference):
+        if self.reference in range(reference,size+reference) and self.reference+self.length-1 in range(reference,size+reference):
             self.relativeReference=self.reference-reference
             return True
 
