@@ -476,51 +476,30 @@ with open(args.config,"r") as csvfile:
             currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller))
 
 def messagehandler(mqc,userdata,msg):
-    if True:
-        (prefix,device,function,reference) = msg.topic.split("/")
-        if function != 'set':
-            return
-        myRef = None
-        myDevice = None
-        for iterDevice in deviceList:
-            if iterDevice.name == device:
-                myDevice = iterDevice
-        if myDevice == None: # no such device
-            return
-        for iterRef in myDevice.writableReferences:
-            if iterRef.topic == reference:
-                myRef=iterRef
-        if myRef == None: # no such reference
-            return    
-        payload = str(msg.payload.decode("utf-8"))
-        if myRef.writefunctioncode == 5:
-            value = None
-            if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
-                value = True
-            if payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
-                value = False
-            if value != None:
-                    result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
-                    try:
-                        if result.function_code < 0x80:
-                            if verbosity>=3:
-                                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
-                        else:
-                            if verbosity>=1:
-                                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
-            
-                    except NameError:
-                        if verbosity>=1:
-                            print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
-            else:
-                if verbosity >= 1:
-                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not \"True\" or \"False\".")
-
-
-        if myRef.writefunctioncode == 6:
-            value = myRef.dtype.parse(str(payload))
-            if value is not None:
-                result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+    (prefix,device,function,reference) = msg.topic.split("/")
+    if function != 'set':
+        return
+    myRef = None
+    myDevice = None
+    for iterDevice in deviceList:
+        if iterDevice.name == device:
+            myDevice = iterDevice
+    if myDevice == None: # no such device
+        return
+    for iterRef in myDevice.writableReferences:
+        if iterRef.topic == reference:
+            myRef=iterRef
+    if myRef == None: # no such reference
+        return    
+    payload = str(msg.payload.decode("utf-8"))
+    if myRef.writefunctioncode == 5:
+        value = None
+        if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
+            value = True
+        if payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
+            value = False
+        if value != None:
+                result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
                 try:
                     if result.function_code < 0x80:
                         if verbosity>=3:
@@ -528,12 +507,32 @@ def messagehandler(mqc,userdata,msg):
                     else:
                         if verbosity>=1:
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+            
                 except NameError:
-                    if verbosity >= 1:
+                    if verbosity>=1:
                         print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
-            else:
+        else:
+            if verbosity >= 1:
+                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Given value is not \"True\" or \"False\".")
+
+
+    if myRef.writefunctioncode == 6:
+        value = myRef.dtype.parse(str(payload))
+        if value is not None:
+            result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+            try:
+                if result.function_code < 0x80:
+                    if verbosity>=3:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                else:
+                    if verbosity>=1:
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+            except NameError:
                 if verbosity >= 1:
-                    print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Value does not fulfill criteria.")
+                    print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
+        else:
+            if verbosity >= 1:
+                print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Value does not fulfill criteria.")
         
 def connecthandler(mqc,userdata,flags,rc):
     if rc == 0:
@@ -568,74 +567,69 @@ def loghandler(mgc, userdata, level, buf):
     if verbosity >= 4:
         print("MQTT LOG:" + buf)
 
-
-
-if True:
 #Setup MODBUS Master
-    if args.rtu:
-
-        if args.rtu_parity == "none":
+if args.rtu:
+    if args.rtu_parity == "none":
             parity = "N"
-        if args.rtu_parity == "odd":
+    if args.rtu_parity == "odd":
             parity = "O"
-        if args.rtu_parity == "even":
+    if args.rtu_parity == "even":
             parity = "E"
 
-        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
+    master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
 
-    elif args.tcp:
-        master = TCPModbusClient(args.tcp, args.tcp_port,client_id="foo123", clean_session=False)
-    else:
-        print("You must specify a modbus access method, either --rtu or --tcp")
-        sys.exit(1)
+elif args.tcp:
+    master = TCPModbusClient(args.tcp, args.tcp_port,client_id="foo123", clean_session=False)
+else:
+    print("You must specify a modbus access method, either --rtu or --tcp")
+    sys.exit(1)
 
 #Setup MQTT Broker
 
-    mqtt_port = args.mqtt_port
+mqtt_port = args.mqtt_port
 
-    if mqtt_port is None:
-        if args.mqtt_use_tls:
-            mqtt_port = 8883
-        else:
-            mqtt_port = 1883
-
-    clientid=globaltopic + "-" + str(time.time())
-    mqc=mqtt.Client(client_id=clientid)
-    mqc.on_connect=connecthandler
-    mqc.on_message=messagehandler
-    mqc.on_disconnect=disconnecthandler
-    mqc.on_log= loghandler
-    mqc.will_set(globaltopic+"connected","False",qos=2,retain=True)
-    mqc.initial_connection_attempted = False
-    mqc.initial_connection_made = False
-    if args.mqtt_user or args.mqtt_pass:
-        mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
-
+if mqtt_port is None:
     if args.mqtt_use_tls:
+        mqtt_port = 8883
+    else:
+        mqtt_port = 1883
 
-        if args.mqtt_tls_version == "tlsv1.2":
-            tls_version = ssl.PROTOCOL_TLSv1_2
-        elif args.mqtt_tls_version == "tlsv1.1":
-            tls_version = ssl.PROTOCOL_TLSv1_1
-        elif args.mqtt_tls_version == "tlsv1":
-            tls_version = ssl.PROTOCOL_TLSv1
-        elif args.mqtt_tls_version is None:
-            tls_version = None
-        else:
-            if verbosity >= 2:
-                print("Unknown TLS version - ignoring")
-            tls_version = None
+clientid=globaltopic + "-" + str(time.time())
+mqc=mqtt.Client(client_id=clientid)
+mqc.on_connect=connecthandler
+mqc.on_message=messagehandler
+mqc.on_disconnect=disconnecthandler
+mqc.on_log= loghandler
+mqc.will_set(globaltopic+"connected","False",qos=2,retain=True)
+mqc.initial_connection_attempted = False
+mqc.initial_connection_made = False
+if args.mqtt_user or args.mqtt_pass:
+    mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
+
+if args.mqtt_use_tls:
+    if args.mqtt_tls_version == "tlsv1.2":
+        tls_version = ssl.PROTOCOL_TLSv1_2
+    elif args.mqtt_tls_version == "tlsv1.1":
+        tls_version = ssl.PROTOCOL_TLSv1_1
+    elif args.mqtt_tls_version == "tlsv1":
+        tls_version = ssl.PROTOCOL_TLSv1
+    elif args.mqtt_tls_version is None:
+        tls_version = None
+    else:
+        if verbosity >= 2:
+            print("Unknown TLS version - ignoring")
+        tls_version = None
 
 
-        if args.mqtt_insecure:
-            cert_regs = ssl.CERT_NONE
-        else:
-            cert_regs = ssl.CERT_REQUIRED
+    if args.mqtt_insecure:
+        cert_regs = ssl.CERT_NONE
+    else:
+        cert_regs = ssl.CERT_REQUIRED
 
-        mqc.tls_set(ca_certs=args.mqtt_cacerts, certfile= None, keyfile=None, cert_reqs=cert_regs, tls_version=tls_version)
+    mqc.tls_set(ca_certs=args.mqtt_cacerts, certfile= None, keyfile=None, cert_reqs=cert_regs, tls_version=tls_version)
 
-        if args.mqtt_insecure:
-            mqc.tls_insecure_set(True)
+    if args.mqtt_insecure:
+        mqc.tls_insecure_set(True)
 
 
 
