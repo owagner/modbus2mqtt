@@ -446,7 +446,7 @@ class Reference:
             if self.lastval != val:
                 self.lastval = val
                 try:
-                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=1,retain=True)
+                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,retain=True)
                     if verbosity>=4:
                         print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+" value: " + str(self.dtype.combine(self.lastval))+" RC:"+str(publish_result.rc))
                 except:
