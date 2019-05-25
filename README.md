@@ -18,6 +18,10 @@ It is intended as a building block in heterogeneous smart home environments wher
 an MQTT message broker is used as the centralized message bus.
 See https://github.com/mqtt-smarthome for a rationale and architectural overview.
 
+Changelog
+---------
+- version 0.4, 25. of May 2019: When writing to a device, updated states are now published immediately, if writing was successful.
+
 Why spicier?
 ------------
 modbus2mqtt by Oliver Wagner is very nicely written but it has some downsides:
