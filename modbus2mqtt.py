@@ -579,7 +579,7 @@ if args.rtu:
     master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
 
 elif args.tcp:
-    master = TCPModbusClient(args.tcp, args.tcp_port,client_id="foo123", clean_session=False)
+    master = TCPModbusClient(args.tcp, args.tcp_port,client_id="modbus2mqtt", clean_session=False)
 else:
     print("You must specify a modbus access method, either --rtu or --tcp")
     sys.exit(1)
