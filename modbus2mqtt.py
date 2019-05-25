@@ -197,7 +197,8 @@ class Poller:
                             print("Read MODBUS, FC:"+str(self.functioncode)+", DataType:"+str(self.dataType)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
                             print("Read MODBUS, DATA:"+str(data))
                         for ref in self.readableReferences:
-                            ref.checkPublish(data,self.topic)
+                            val = data[ref.relativeReference:(ref.length+ref.relativeReference)]
+                            ref.checkPublish(val)
                     else:
                         if verbosity>=1:
                             print("Slave device "+str(self.slaveid)+" responded with error code: "+str(result.function_code))
@@ -305,10 +306,22 @@ class dataTypes:
             self.parse=self.parsebool
             self.combine=self.combinebool
     
-    def parsebool(self,msg):
-        return msg
+    def parsebool(self,payload):
+        if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
+            value = True
+        elif payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
+            value = False
+        else:
+            value = None
+        return value
+
     def combinebool(self,val):
-        return str(val[0])
+        try:
+            len(val)
+            return bool(val[0])
+        except:
+            return bool(val)
+
 
     def parseString(self,msg):
         out=[]
@@ -356,7 +369,7 @@ class dataTypes:
             out = -((~val[0] & 0x7FFF)+1)
         else:
             out = val[0]
-        return str(out)
+        return out
 
 
     def parseuint32LE(self,msg):
@@ -371,7 +384,7 @@ class dataTypes:
         return out
     def combineuint32LE(self,val):
         out = val[0]*65536 + val[1]
-        return str(out)
+        return out
 
 
     def parseuint32BE(self,msg):
@@ -386,7 +399,7 @@ class dataTypes:
         return out
     def combineuint32BE(self,val):
         out = val[0] + val[1]*65536
-        return str(out)
+        return out
     
     def parseuint16(self,msg):
         try:
@@ -397,7 +410,7 @@ class dataTypes:
             value=None
         return value
     def combineuint16(self,val):
-        return str(val[0])
+        return val[0]
 
 
 class Reference:
@@ -425,24 +438,20 @@ class Reference:
             self.relativeReference=self.reference-reference
             return True
 
-    def checkPublish(self,result,topic):
+    def checkPublish(self,val):
         # Only publish messages after the initial connection has been made. If it became disconnected then the offline buffer will store messages,
         # but only after the intial connection was made.
         if mqc.initial_connection_made == True:
-            val = result[self.relativeReference:(self.length+self.relativeReference)]
+            val = self.dtype.combine(val)
             if self.lastval != val:
-                self.lastval= val
+                self.lastval = val
                 try:
-                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.dtype.combine(self.lastval),qos=1,retain=True)
+                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,qos=1,retain=True)
                     if verbosity>=4:
                         print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+" value: " + str(self.dtype.combine(self.lastval))+" RC:"+str(publish_result.rc))
                 except:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval)))
-
-def publishOnWrite(reference,value,topic):
-    pass
-
         
 pollers=[]
 
@@ -496,18 +505,13 @@ def messagehandler(mqc,userdata,msg):
         return    
     payload = str(msg.payload.decode("utf-8"))
     if myRef.writefunctioncode == 5:
-        value = None
-        if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
-            value = True
-        if payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
-            value = False
+        value = myRef.dtype.parse(str(payload))
         if value != None:
                 result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
                 try:
                     if result.function_code < 0x80:
+                        myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
                         if verbosity>=3:
-                            # write was successful => we can assume, that the corresponding state can be set and published
-                            
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                     else:
                         if verbosity>=1:
@@ -527,6 +531,7 @@ def messagehandler(mqc,userdata,msg):
             result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
             try:
                 if result.function_code < 0x80:
+                    myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
                     if verbosity>=3:
                         print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                 else:
