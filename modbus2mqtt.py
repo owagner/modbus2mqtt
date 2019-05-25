@@ -440,6 +440,9 @@ class Reference:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval)))
 
+def publishOnWrite(reference,value,topic):
+    pass
+
         
 pollers=[]
 
@@ -503,6 +506,8 @@ def messagehandler(mqc,userdata,msg):
                 try:
                     if result.function_code < 0x80:
                         if verbosity>=3:
+                            # write was successful => we can assume, that the corresponding state can be set and published
+                            
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                     else:
                         if verbosity>=1:
