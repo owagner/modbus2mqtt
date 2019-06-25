@@ -1,9 +1,9 @@
 "type","topic","col2","col3","col4","col5","col6"
-#
+# DO NOT REMOVE THE FIRST LINE!
 # Example register definition file.
 #
 # You need to define a Poller and then one or more References for that poller.
-# The Poller will "poll" the slaveid and bring back 1 or more registers/bits.
+# The Poller will 'poll' the slaveid and bring back 1 or more registers/bits.
 # The References must then match up with the polled range to define the topic for each.
 #################################################################################
 # Poller-object
