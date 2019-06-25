@@ -81,6 +81,7 @@ Usage
 Configuration file
 -------------------
 THE FIRST LINE OF THE CONFIG FILE HAS TO BE:
+
 "type","topic","col2","col3","col4","col5","col6"
 
 The Modbus data which is to be polled is defined in a CSV file.
