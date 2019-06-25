@@ -80,7 +80,9 @@ Usage
      
 Configuration file
 -------------------
-THE FIRST LINE OF THE CONFIG FILE HAS TO BE: "type","topic","col2","col3","col4","col5","col6"
+THE FIRST LINE OF THE CONFIG FILE HAS TO BE:
+"type","topic","col2","col3","col4","col5","col6"
+
 The Modbus data which is to be polled is defined in a CSV file.
 There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. In  the "Poller" object we define the type of the modbus data and how the request to the device should look like (which modbus references are to be read, for example: holding registers at references 0 to 10). With the reference object we define (among other things) to which topic the data of a certain data point (registers, coil..) is going to be published.
 Modbus references are as transmitted on the wire. In the traditional numbering scheme these would have been called offsets. E. g. to read 400020 you would use reference 20.
