@@ -20,6 +20,7 @@ See https://github.com/mqtt-smarthome for a rationale and architectural overview
 
 Changelog
 ---------
+- version 0.5, 21. of September 2019: print error messages in case of badly configured pollers
 - version 0.4, 25. of May 2019: When writing to a device, updated states are now published immediately, if writing was successful.
 
 Why spicier?

@@ -45,7 +45,7 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-version="0.4"
+version="0.5"
     
 parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
 parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
@@ -139,7 +139,7 @@ class Poller:
             deviceList.append(device)
             self.device=device
         if verbosity>=2:
-            print("Added new Poller "+str(self.topic)+","+str(self.functioncode)+","+str(self.dataType)+","+str(self.reference)+","+str(self.size)+",")
+            print("Added new poller "+str(self.topic)+","+str(self.functioncode)+","+str(self.dataType)+","+str(self.reference)+","+str(self.size)+",")
 
 
     def failCount(self,failed):
@@ -465,27 +465,56 @@ with open(args.config,"r") as csvfile:
     currentPoller=None
     for row in reader:
         if row["type"]=="poller" or row["type"]=="poll":
-            if row["col5"] == "holding_register":
-                functioncode = 3
-                dataType="int16"
-            if row["col5"] == "coil":
-                functioncode = 1
-                dataType="bool"
-            if row["col5"] == "input_register":
-                functioncode = 4
-                dataType="int16"
-            if row["col5"] == "input_status":
-                functioncode = 2
-                dataType="bool"
             rate = float(row["col6"])
             slaveid = int(row["col2"])
             reference = int(row["col3"])
             size = int(row["col4"])
+            
+            if row["col5"] == "holding_register":
+                functioncode = 3
+                dataType="int16"
+                if size>123: #applies to TCP, RTU should support 125 registers. But let's be safe.
+                    currentPoller=None
+                    if verbosity>=1:
+                        print("Too many registers (max. 123). Ignoring poller "+row["topic"]+".")
+                    continue
+            elif row["col5"] == "coil":
+                functioncode = 1
+                dataType="bool"
+                if size>2000: #some implementations don't seem to support 2008 coils/inputs
+                    currentPoller=None
+                    if verbosity>=1:
+                        print("Too many coils (max. 2000). Ignoring poller "+row["topic"]+".")
+                    continue
+            elif row["col5"] == "input_register":
+                functioncode = 4
+                dataType="int16"
+                if size>123:
+                    currentPoller=None
+                    if verbosity>=1:
+                        print("Too many registers (max. 123). Ignoring poller "+row["topic"]+".")
+                    continue
+            elif row["col5"] == "input_status":
+                functioncode = 2
+                dataType="bool"
+                if size>2000:
+                    currentPoller=None
+                    if verbosity>=1:
+                        print("Too many inputs (max. 2000). Ignoring poller "+row["topic"]+".")
+                    continue
+
+            else:
+                print("Unknown function code ("+row["col5"]+" ignoring poller "+row["topic"]+".")
+                currentPoller=None
+                continue
             currentPoller = Poller(row["topic"],rate,slaveid,functioncode,reference,size,dataType)
             pollers.append(currentPoller)
             continue
         elif row["type"]=="reference" or row["type"]=="ref":
-            currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller))
+            if currentPoller is not None:
+                currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller))
+            else:
+                print("No poller for reference "+row["topic"]+".")
 
 def messagehandler(mqc,userdata,msg):
     (prefix,device,function,reference) = msg.topic.split("/")
@@ -642,6 +671,9 @@ if args.mqtt_use_tls:
         mqc.tls_insecure_set(True)
 
 
+if len(pollers)<1:
+    print("No pollers. Exitting.")
+    sys.exit(0)
 
 #Main Loop
 modbus_connected = False
