@@ -305,7 +305,15 @@ class dataTypes:
             self.regAmount=1         
             self.parse=self.parsebool
             self.combine=self.combinebool
-    
+        elif conf == "float32LE":
+            self.regAmount=2          
+            self.parse=self.parsefloat32LE
+            self.combine=self.combinefloat32LE
+        elif conf == "float32BE":
+           self.regAmount=2          
+           self.parse=self.parsefloat32BE
+           self.combine=self.combinefloat32BE
+   
     def parsebool(self,payload):
         if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
             value = True
@@ -411,6 +419,37 @@ class dataTypes:
         return value
     def combineuint16(self,val):
         return val[0]
+
+    def parsefloat32LE(self,msg):
+        try:
+            out=None
+            #value=int(msg)
+            #if value > 4294967295 or value < 0:
+            #    out = None
+            #else:
+            #    out=[int(value&0x0000FFFF),int(value>>16)]
+        except:
+            out=None
+        return out
+    def combinefloat32LE(self,val):
+        #out = str(struct.unpack('=f', struct.pack('=i',int(val[0])<<16|int(val[1])))[0])
+        out = int(1)
+        return out
+
+    def parsefloat32BE(self,msg):
+        try:
+            out=None
+            #value=int(msg)
+            #if value > 4294967295 or value < 0:
+            #    out = None
+            #else:
+            #    out=[int(value&0x0000FFFF),int(value>>16)]
+        except:
+            out=None
+        return out
+    def combinefloat32BE(self,val):
+        out = str(struct.unpack('=f', struct.pack('=i',int(val[1])<<16|int(val[0])))[0])
+        return out
 
 
 class Reference:
