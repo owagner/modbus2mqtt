@@ -487,10 +487,10 @@ class Reference:
                 try:
                     publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,retain=True)
                     if verbosity>=4:
-                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+" value: " + str(self.dtype.combine(self.lastval))+" RC:"+str(publish_result.rc))
+                        print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+" value: " + str(self.lastval)+" RC:"+str(publish_result.rc))
                 except:
                     if verbosity>=1:
-                        print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.dtype.combine(self.lastval)))
+                        print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
         
 pollers=[]
 
