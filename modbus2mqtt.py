@@ -37,6 +37,7 @@ import signal
 import random
 import ssl
 import math
+import struct
 
 import addToHomeAssistant
 
@@ -432,8 +433,7 @@ class dataTypes:
             out=None
         return out
     def combinefloat32LE(self,val):
-        #out = str(struct.unpack('=f', struct.pack('=i',int(val[0])<<16|int(val[1])))[0])
-        out = int(1)
+        out = str(struct.unpack('=f', struct.pack('=i',int(val[0])<<16|int(val[1])))[0])
         return out
 
     def parsefloat32BE(self,msg):
