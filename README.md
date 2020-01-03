@@ -96,25 +96,7 @@ Refer to the example.csv for more details.
 * Use "input registers", for modbus functioncode 4
 
 Reference objects link to the modbus reference address and define specific details about that register or bit.
-Example:
-
-poller-object:
-```
-poll,someTopic,1,2,5,coil,1.0
-```
-Will poll states of 5 coils from slave device 1 once a second, starting at coil 2.
-
-reference-object:
-```
-ref,light0,2,rw
-```
-The state of coil 2 will be published to mqtt with the topic modbus/someTopic/state/light0
-if column 3 contains an 'r'.
-
-If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
-column 3 contains a 'w', the new state will be written to the slave device.
-
-These are used together like this:
+Pollers and references are used together like this:
 ```
 poll,kitchen,7,0,5,coil,1.0
 ref,light0,0,rw
@@ -129,18 +111,33 @@ The first coil 0 will then be sent as an MQTT message with topic modbus/kitchen/
 
 The second coil 1 will then be sent as an MQTT message with topic modbus/kitchen/state/light1 and so on.
 
+
+Note that the reference addresses are absolute adresses and are NOT related to the start address of the poller! If you define a reference that is not within the pollers range you will get an error message.
+So another example:
+```
+poll,someTopic,1,2,11,coil,1.0
+ref,light9,9,rw
+```
+This will poll states of 11 coils from slave device 1 once a second, starting at coil 2.
+The state of coil 9 will be published to mqtt with the topic modbus/someTopic/state/light0
+if column 3 contains an 'r'.
+
+If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
+column 3 contains a 'w', the new state will be written to coil 9 of the slave device.
+
+
 Some other "intepretations" of register contents are also supported:
 ```
 poll,garage,1,0,10,holding_register,2
-ref,counter1,0,rw,uint32BE 
-ref,counter2,2,rw,int16
+ref,counter1,0,rw,float32BE 
+ref,counter2,2,rw,uint16
 ref,somestring,3,rw,string6
 ```
 This will poll 10 consecutive registers from Modbus slave id 1, starting at holding register 0.
 
-The last row now contains the data format. Supported values: uint32BE, uint32LE, int16, stringXXX, uint16 (default) with XXX being the string length in bytes.
+The last row now contains the data format. Supported values: float32BE, float32LE, uint32BE, uint32LE, uint16 (default), stringXXX with XXX being the string length in bytes.
 
-Note that a uint32BE will of course span over two registers (0 and 1 in the above example) and that you can still define another reference object occupying the same registers. This might come in handy if you want to modify a small part of a string seperately.
+Note that a float32BE will of course span over two registers (0 and 1 in the above example) and that you can still define another reference object occupying the same registers. This might come in handy if you want to modify a small part of a string seperately.
 
 
 Topics
