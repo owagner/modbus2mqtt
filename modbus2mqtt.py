@@ -453,10 +453,17 @@ class dataTypes:
 
 
 class Reference:
-    def __init__(self,topic,reference,dtype,rw,poller):
+    def __init__(self,topic,reference,dtype,rw,poller,scaling):
         self.topic=topic
         self.reference=int(reference)
         self.lastval=None
+        self.scale=None
+        if scaling:
+            try:
+                self.scale=float(scaling)
+            except ValueError as e:
+              if verbosity>=1:
+                print("Scaling Error:", e)
         self.rw=rw
         self.relativeReference=None
         self.writefunctioncode=None
@@ -484,8 +491,10 @@ class Reference:
             val = self.dtype.combine(val)
             if self.lastval != val:
                 self.lastval = val
+                if self.scale:
+                    val = val * self.scale
                 try:
-                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,self.lastval,retain=True)
+                    publish_result = mqc.publish(globaltopic+self.device.name+"/state/"+self.topic,val,retain=True)
                     if verbosity>=4:
                         print("published MQTT topic: " + str(self.device.name+"/state/"+self.topic)+" value: " + str(self.lastval)+" RC:"+str(publish_result.rc))
                 except:
@@ -551,7 +560,7 @@ with open(args.config,"r") as csvfile:
             continue
         elif row["type"]=="reference" or row["type"]=="ref":
             if currentPoller is not None:
-                currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller))
+                currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller,row["col5"]))
             else:
                 print("No poller for reference "+row["topic"]+".")
 
