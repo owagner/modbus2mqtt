@@ -556,13 +556,23 @@ with open(args.config,"r") as csvfile:
                 print("No poller for reference "+row["topic"]+".")
 
 def messagehandler(mqc,userdata,msg):
-    (prefix,device,function,reference) = msg.topic.split("/")
-    if device == "reset-autoremove":
-        payload = str(msg.payload.decode("utf-8"))
-        if payload == "True" or payload == "1":
-            for p in pollers:
-                p.disabled = False
+    if str(msg.topic) == globaltopic+"reset-autoremove":
+        if not args.autoremove and verbosity>=1:
+            print("ERROR: Received autoremove-reset command but autoremove is not enabled. Check flags.")
+        if args.autoremove:
+            payload = str(msg.payload.decode("utf-8"))
+            if payload == "True" or payload == "1":
+                if verbosity>=3:
+                    print("Reactivating previously disabled pollers (command from MQTT)")
+                for p in pollers:
+                    if p.disabled == True:
+                        p.disabled = False
+                        p.failcounter = 0
+                        if verbosity>=3:
+                            print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
+
         return
+    (prefix,device,function,reference) = msg.topic.split("/")
     if function != 'set':
         return
     myRef = None
@@ -624,6 +634,7 @@ def connecthandler(mqc,userdata,flags,rc):
         if verbosity>=2:
             print("MQTT Broker connected succesfully: " + args.mqtt_host + ":" + str(mqtt_port))
         mqc.subscribe(globaltopic + "+/set/+")
+        mqc.subscribe(globaltopic + "reset-autoremove")
         if verbosity>=2:
             print("Subscribed to MQTT topic: "+globaltopic + "+/set/+")
         mqc.publish(globaltopic + "connected", "True", qos=1, retain=True)
