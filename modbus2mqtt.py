@@ -557,6 +557,12 @@ with open(args.config,"r") as csvfile:
 
 def messagehandler(mqc,userdata,msg):
     (prefix,device,function,reference) = msg.topic.split("/")
+    if device == "reset-autoremove":
+        payload = str(msg.payload.decode("utf-8"))
+        if payload == "True" or payload == "1":
+            for p in pollers:
+                p.disabled=False
+        return
     if function != 'set':
         return
     myRef = None
