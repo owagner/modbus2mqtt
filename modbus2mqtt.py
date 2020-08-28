@@ -374,10 +374,16 @@ class dataTypes:
             out=None
         return out
     def combineint16(self,val):
-        if (val[0] & 0x8000) > 0:
-            out = -((~val[0] & 0x7FFF)+1)
+        try:
+            len(val)
+            myval=val[0]
+        except:
+            myval=val
+
+        if (myval & 0x8000) > 0:
+            out = -((~myval & 0x7FFF)+1)
         else:
-            out = val[0]
+            out = myval
         return out
 
 
@@ -419,7 +425,11 @@ class dataTypes:
             value=None
         return value
     def combineuint16(self,val):
-        return val[0]
+        try:
+            len(val)
+            return val[0]
+        except:
+            return val
 
     def parsefloat32LE(self,msg):
         try:
