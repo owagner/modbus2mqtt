@@ -22,17 +22,17 @@ class HassConnector:
     def addBinarySensor(self,ref):
         if(self.verbosity):
             print("Adding binary sensor "+ref.topic+" to HASS")
-        self.mqc.publish("homeassistant/binary_sensor/"+self.globaltopic[0:-1]+"_"+ref.device.name+"_"+ref.topic+"/config","{\"name\": \""+ref.device.name+"_"+ref.topic+"\", \"state_topic\": \""+self.globaltopic+ref.device.name+"/state/"+ref.topic+"\", \"payload_on\": \"True\", \"payload_off\": \"False\"}",qos=0,retain=False)
+        self.mqc.publish("homeassistant/binary_sensor/"+self.globaltopic[0:-1]+"_"+ref.device.name+"_"+ref.topic+"/config","{\"name\": \""+ref.device.name+"_"+ref.topic+"\", \"state_topic\": \""+self.globaltopic+ref.device.name+"/state/"+ref.topic+"\", \"payload_on\": \"True\", \"payload_off\": \"False\"}",qos=0,retain=True)
 
     def addSensor(self,ref):
         if(self.verbosity):
             print("Adding sensor "+ref.topic+" to HASS")
-        self.mqc.publish("homeassistant/sensor/"+self.globaltopic[0:-1]+"_"+ref.device.name+"_"+ref.topic+"/config","{\"name\": \""+ref.device.name+"_"+ref.topic+"\", \"state_topic\": \""+self.globaltopic+ref.device.name+"/state/"+ref.topic+"\"}",qos=0,retain=False)
+        self.mqc.publish("homeassistant/sensor/"+self.globaltopic[0:-1]+"_"+ref.device.name+"_"+ref.topic+"/config","{\"name\": \""+ref.device.name+"_"+ref.topic+"\", \"state_topic\": \""+self.globaltopic+ref.device.name+"/state/"+ref.topic+"\"}",qos=0,retain=True)
 
     def addSwitch(self,ref):
         if(self.verbosity):
             print("Adding switch "+ref.topic+" to HASS")
-        self.mqc.publish("homeassistant/switch/"+self.globaltopic[0:-1]+"_"+ref.device.name+"_"+ref.topic+"/config","{\"name\": \""+ref.device.name+"_"+ref.topic+"\", \"state_topic\": \""+self.globaltopic+ref.device.name+"/state/"+ref.topic+"\", \"state_on\": \"True\", \"state_off\": \"False\", \"command_topic\": \""+self.globaltopic+ref.device.name+"/set/"+ref.topic+"\", \"payload_on\": \"True\", \"payload_off\": \"False\"}",qos=0,retain=False)
+        self.mqc.publish("homeassistant/switch/"+self.globaltopic[0:-1]+"_"+ref.device.name+"_"+ref.topic+"/config","{\"name\": \""+ref.device.name+"_"+ref.topic+"\", \"state_topic\": \""+self.globaltopic+ref.device.name+"/state/"+ref.topic+"\", \"state_on\": \"True\", \"state_off\": \"False\", \"command_topic\": \""+self.globaltopic+ref.device.name+"/set/"+ref.topic+"\", \"payload_on\": \"True\", \"payload_off\": \"False\"}",qos=0,retain=True)
 
 #    def removeAll(self,referenceList):
 #        for ref in referenceList:
