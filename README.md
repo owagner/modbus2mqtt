@@ -16,7 +16,6 @@ values via MQTT.
 
 It is intended as a building block in heterogeneous smart home environments where 
 an MQTT message broker is used as the centralized message bus.
-See https://github.com/mqtt-smarthome for a rationale and architectural overview.
 
 Changelog
 ---------
@@ -50,9 +49,6 @@ Main improvements over modbus2mqtt:
 
 There is still a lot of room for improvement! Especially in the realm of
 - documentation
-- examples
-- code style
-- scaling of modbus registers before being sent to MQTT. 
 - process deadbands for registers so MQTT values are only sent when the modbus register goes above or below the deadband.
 - maybe do not poll if the poller only has references that are write-only
 ...
@@ -171,3 +167,14 @@ mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "True"
 to a register:
 
 mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "12346"
+
+Scripts addToHomeAssistant.py and create-openhab-conf.py
+------------------------------------------------
+These scripts are not really part of this project, but I decided to include them anyway. They were written because I grew more and more frustrated with the Modbus capabilities of OpenHAB and Home Assistant.
+
+So what exactly do they do? Completely different things actually.
+
+* addToHomeAssistant.py can only be run within modbus2mqtt.py. It can be invoked by passing --add-to-homeassistant when running modbus2mqtt.py. It uses MQTT messages to add all the stuff from the .csv file to home assistant automatically. Just try it. I recommend using a non productive instance of Home Assistant for testing :-)
+
+
+* create-openhab-conf.py can be used independently. It parses the .csv file and creates configuration files (.things and .items) for OpenHAB (version 2+ only). This is of course not necessary for using spicierModbus2mqtt whit OpenHab but it removes a lot of hassle from it. I use it to create a basic working structure and then rename and rearrange the items by hand.
