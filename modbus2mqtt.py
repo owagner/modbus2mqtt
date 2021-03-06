@@ -206,12 +206,16 @@ class Poller:
                 except:
                     failed = True
                     if verbosity>=1:
-                        print("Error talking to slave device:"+str(self.slaveid)+", trying again...")
+                        print("Error talking to slave device:"+str(self.slaveid)+" (connection timeout)")
                 self.failCount(failed)
             else:
                 if master.connect():
-                    if verbosity >= 1:
-                        print("MODBUS connected successfully")
+                    pass
+                    #if verbosity >= 1:
+                    #    print("MODBUS connected successfully")
+                    # unfortunately there is a bug in pymodbus that causes the master to signal a complete disconnect
+                    # even though only one device has caused an error. This has led to a flood of this success message for some users.
+                    # Atm. I have no real desire to fix this upstream...
                 else:
                     for p in pollers:
                         p.failed=True
