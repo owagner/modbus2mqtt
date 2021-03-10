@@ -73,6 +73,10 @@ parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set paus
 
 args=parser.parse_args()
 verbosity=args.verbosity
+loopBreak=args.set_loop_break
+if loopBreak == 0:
+    loopBreak = 0.01
+    print("ERROR: Loop break must not be 0! Using default value (0.01) instead.")
 addToHass=False
 addToHass=args.add_to_homeassistant
 
@@ -797,7 +801,7 @@ while control.runLoop:
                 if verbosity>=1:
                     print("Exception Error when polling or publishing, trying again...")
 
-    time.sleep(args.set_loop_break)
+    time.sleep(loopBreak)
 
 master.close()
 #adder.removeAll(referenceList)
