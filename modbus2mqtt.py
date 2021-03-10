@@ -808,6 +808,7 @@ while control.runLoop:
                     if p.disabled is not True:
                         anyAct=True
                 if not anyAct:
+                    time.sleep(5)
                     for p in pollers:
                         if p.disabled == True:
                             p.disabled = False
