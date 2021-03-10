@@ -624,7 +624,7 @@ def messagehandler(mqc,userdata,msg):
                         if verbosity>=1:
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
             
-                except NameError:
+                except:
                     if verbosity>=1:
                         print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
         else:
@@ -644,7 +644,7 @@ def messagehandler(mqc,userdata,msg):
                 else:
                     if verbosity>=1:
                         print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
-            except NameError:
+            except:
                 if verbosity >= 1:
                     print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
         else:
