@@ -153,11 +153,17 @@ class Poller:
             if self.failcounter==3:
                 if args.autoremove:
                     self.disabled=True
-                    print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+ " and functioncode "+str(self.functioncode)+" disabled due to the above error.")
+                    if verbosity >=1:
+                        print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+" disabled (functioncode: "+str(self.functioncode)+", start reference: "+str(self.reference)+", size: "+str(self.size)+").")
+                for p in pollers: #also fail all pollers with the same slave id
+                    if p.slaveid == self.slaveid:
+                        p.failcounter=3
+                        p.disabled=True
+                        if verbosity >=1:
+                            print("Poller "+p.topic+" with Slave-ID "+str(p.slaveid)+" disabled (functioncode: "+str(p.functioncode)+", start reference: "+str(p.reference)+", size: "+str(p.size)+").")
                 self.failcounter=4
                 self.connected = False
                 mqc.publish(globaltopic + self.topic +"/connected", "False", qos=1, retain=True)
-                
             else:
                 if self.failcounter<3:
                     self.failcounter+=1
@@ -585,13 +591,13 @@ def messagehandler(mqc,userdata,msg):
         if args.autoremove:
             payload = str(msg.payload.decode("utf-8"))
             if payload == "True" or payload == "1":
-                if verbosity>=3:
+                if verbosity>=1:
                     print("Reactivating previously disabled pollers (command from MQTT)")
                 for p in pollers:
                     if p.disabled == True:
                         p.disabled = False
                         p.failcounter = 0
-                        if verbosity>=3:
+                        if verbosity>=1:
                             print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
 
         return
@@ -793,6 +799,18 @@ while control.runLoop:
             try:
                 for p in pollers:
                     p.checkPoll()
+                anyAct=False
+                for p in pollers:
+                    if p.disabled is not True:
+                        anyAct=True
+                if not anyAct:
+                    for p in pollers:
+                        if p.disabled == True:
+                            p.disabled = False
+                            p.failcounter = 0
+                            if verbosity>=1:
+                                print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
+
             except:
                 if verbosity>=1:
                     print("Exception Error when polling or publishing, trying again...")
