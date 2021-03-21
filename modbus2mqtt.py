@@ -116,13 +116,24 @@ class Device:
         self.slaveid=slaveid
         self.errorCount=0
         self.pollCount=0
-        self.next_due=time.clock_gettime(0)+60
+        self.errorPercent=0
+        self.next_due=time.clock_gettime(0)+10
         if verbosity>=2:
             print('Added new device \"'+self.name+'\"')
 
     def publishDiagnostics(self):
-        pass
-        time.clock_gettime(0)
+        if self.next_due<time.clock_gettime(0):
+            self.next_due=time.clock_gettime(0)+10
+            if self.errorCount > 0 and self.pollCount > 0:
+                error = (self.errorCount / self.pollCount)*100
+                if error != self.errorPercent:
+                    self.errorPercent=error
+                    if mqc.initial_connection_made == True:
+                        try:
+                            mqc.publish(globaltopic + self.name +"/diagnostics_errors_percent", str(self.errorPercent), qos=1, retain=True)
+                            mqc.publish(globaltopic + self.name +"/diagnostics_errors_total", str(self.errorCount), qos=1, retain=True)
+                        except:
+                            pass
 
 
 class Poller:
@@ -812,6 +823,9 @@ while control.runLoop:
             try:
                 for p in pollers:
                     p.checkPoll()
+
+                for d in deviceList:
+                    d.publishDiagnostics()
                 anyAct=False
                 for p in pollers:
                     if p.disabled is not True:
