@@ -116,7 +116,6 @@ class Device:
         self.slaveid=slaveid
         self.errorCount=0
         self.pollCount=0
-        self.errorPercent=0
         self.next_due=time.clock_gettime(0)+args.diagnostics_rate
         if verbosity>=2:
             print('Added new device \"'+self.name+'\"')
@@ -125,16 +124,21 @@ class Device:
         if args.diagnostics_rate>0:
             if self.next_due<time.clock_gettime(0):
                 self.next_due=time.clock_gettime(0)+args.diagnostics_rate
-                if self.errorCount > 0 and self.pollCount > 0:
+                error=0
+                try:
                     error=(self.errorCount / self.pollCount)*100
-                    if error!=self.errorPercent:
-                        self.errorPercent=error
-                        if mqc.initial_connection_made == True:
-                            try:
-                                mqc.publish(globaltopic + self.name +"/diagnostics_errors_percent", str(self.errorPercent), qos=1, retain=True)
-                                mqc.publish(globaltopic + self.name +"/diagnostics_errors_total", str(self.errorCount), qos=1, retain=True)
-                            except:
-                                pass
+                except:
+                    error=0
+                if self.pollCount==0:
+                    error=100
+                if mqc.initial_connection_made == True:
+                    try:
+                        mqc.publish(globaltopic + self.name +"/diagnostics_errors_percent", str(error), qos=1, retain=True)
+                        mqc.publish(globaltopic + self.name +"/diagnostics_errors_total", str(self.errorCount), qos=1, retain=True)
+                    except:
+                        pass
+                self.pollCount=0
+                self.errorCount=0
 
 
 class Poller:
