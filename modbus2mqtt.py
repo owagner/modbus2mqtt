@@ -114,8 +114,15 @@ class Device:
         self.occupiedTopics=[]
         self.writableReferences=[]
         self.slaveid=slaveid
+        self.errorCount=0
+        self.pollCount=0
+        self.next_due=time.clock_gettime(0)+60
         if verbosity>=2:
             print('Added new device \"'+self.name+'\"')
+
+    def publishDiagnostics(self):
+        pass
+        time.clock_gettime(0)
 
 
 class Poller:
@@ -148,12 +155,14 @@ class Poller:
 
 
     def failCount(self,failed):
+        self.device.pollCount+=1
         if not failed:
             self.failcounter=0
             if not self.connected:
                 self.connected = True
                 mqc.publish(globaltopic + self.topic +"/connected", "True", qos=1, retain=True)
         else:
+            self.device.errorCount+=1
             if self.failcounter==3:
                 if args.autoremove:
                     self.disabled=True
