@@ -184,12 +184,12 @@ class Poller:
                     self.disabled=True
                     if verbosity >=1:
                         print("Poller "+self.topic+" with Slave-ID "+str(self.slaveid)+" disabled (functioncode: "+str(self.functioncode)+", start reference: "+str(self.reference)+", size: "+str(self.size)+").")
-                     for p in pollers: #also fail all pollers with the same slave id
-                         if p.slaveid == self.slaveid:
-                             p.failcounter=3
-                             p.disabled=True
-                             if verbosity >=1:
-                                 print("Poller "+p.topic+" with Slave-ID "+str(p.slaveid)+" disabled (functioncode: "+str(p.functioncode)+", start reference: "+str(p.reference)+", size: "+str(p.size)+").")
+                    for p in pollers: #also fail all pollers with the same slave id
+                        if p.slaveid == self.slaveid:
+                            p.failcounter=3
+                            p.disabled=True
+                            if verbosity >=1:
+                                print("Poller "+p.topic+" with Slave-ID "+str(p.slaveid)+" disabled (functioncode: "+str(p.functioncode)+", start reference: "+str(p.reference)+", size: "+str(p.size)+").")
                 self.failcounter=4
                 self.connected = False
                 mqc.publish(globaltopic + self.topic +"/connected", "False", qos=1, retain=True)
