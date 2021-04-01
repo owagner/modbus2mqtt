@@ -152,7 +152,7 @@ the broker (1) and to the Modbus interface (2).
 
 We also maintain a "connected"-Topic for each poller (prefix/poller_topic/connected). This is useful when using Modbus RTU with multiple slave devices because a non-responsive device can be detected.
 
-For diagnostic purposes (mainly for Modbus via serial) the topics prefix/poller_topic/diagnostics_errors_percent and prefix/poller_topic/diagnostics_errors_total are avaiable. This feature can be enabled by passing the argument "--diagnostics-rate X" with x being the amount of seconds between each recalculation and publishments of the error rate in percent and the amount of errors within the time frame X. Set X to something like 600 to get diagnostic messages every 10 minutes.
+For diagnostic purposes (mainly for Modbus via serial) the topics prefix/poller_topic/state/diagnostics_errors_percent and prefix/poller_topic/state/diagnostics_errors_total are avaiable. This feature can be enabled by passing the argument "--diagnostics-rate X" with x being the amount of seconds between each recalculation and publishments of the error rate in percent and the amount of errors within the time frame X. Set X to something like 600 to get diagnostic messages every 10 minutes.
 
 Writing to Modbus coils and registers
 ------------------------------------------------

@@ -133,8 +133,8 @@ class Device:
                     error=100
                 if mqc.initial_connection_made == True:
                     try:
-                        mqc.publish(globaltopic + self.name +"/diagnostics_errors_percent", str(error), qos=1, retain=True)
-                        mqc.publish(globaltopic + self.name +"/diagnostics_errors_total", str(self.errorCount), qos=1, retain=True)
+                        mqc.publish(globaltopic + self.name +"/state/diagnostics_errors_percent", str(error), qos=1, retain=True)
+                        mqc.publish(globaltopic + self.name +"/state/diagnostics_errors_total", str(self.errorCount), qos=1, retain=True)
                     except:
                         pass
                 self.pollCount=0
