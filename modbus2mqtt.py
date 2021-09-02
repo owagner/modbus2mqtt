@@ -68,6 +68,7 @@ parser.add_argument('--config', required=True, help='Configuration file. Require
 parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=mb writes, 4=all')
 parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times. Removed pollers can be reactivated by sending "True" or "1" to topic modbus/reset-autoremove')
 parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
+parser.add_argument('--always-publish',action='store_true',help='Always publish values, even if they did not change.')
 parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
 parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
 
@@ -538,7 +539,7 @@ class Reference:
         # but only after the intial connection was made.
         if mqc.initial_connection_made == True:
             val = self.dtype.combine(val)
-            if self.lastval != val:
+            if self.lastval != val or args.always_publish:
                 self.lastval = val
                 if self.scale:
                     val = val * self.scale
