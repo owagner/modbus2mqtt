@@ -67,15 +67,10 @@ class Control:
     def stopLoop(self):
         self.runLoop = False
 
-
-
 def signal_handler(signal, frame):
         global control
         print('Exiting ' + sys.argv[0])
         control.stopLoop()
-
-
-
 
 class Device:
     def __init__(self,name,slaveid):
@@ -108,7 +103,6 @@ class Device:
                         pass
                 self.pollCount=0
                 self.errorCount=0
-
 
 class Poller:
     def __init__(self,topic,rate,slaveid,functioncode,reference,size,dataType):
@@ -165,7 +159,6 @@ class Poller:
             else:
                 if self.failcounter<3:
                     self.failcounter+=1
-
 
     def poll(self):
             result = None
@@ -233,7 +226,6 @@ class Poller:
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
             self.poll()
             self.next_due=time.clock_gettime(0)+self.rate
-
 
     def addReference(self,myRef):
         #check reference configuration and maybe add to this poller or to the list of writable things
@@ -339,7 +331,6 @@ class dataTypes:
         except:
             return bool(val)
 
-
     def parseString(self,msg):
         out=[]
         if len(msg)<=self.stringLength:
@@ -368,8 +359,6 @@ class dataTypes:
         pass
     def combineint32BE(self,val):
         pass
-
-
     def parseint16(self,msg):
         try:
             value=int(msg)
@@ -393,7 +382,6 @@ class dataTypes:
             out = myval
         return out
 
-
     def parseuint32LE(self,msg):
         try:
             value=int(msg)
@@ -407,7 +395,6 @@ class dataTypes:
     def combineuint32LE(self,val):
         out = val[0]*65536 + val[1]
         return out
-
 
     def parseuint32BE(self,msg):
         try:
@@ -468,7 +455,6 @@ class dataTypes:
         out = str(struct.unpack('=f', struct.pack('=i',int(val[1])<<16|int(val[0])))[0])
         return out
 
-
 class Reference:
     def __init__(self,topic,reference,dtype,rw,poller,scaling):
         self.topic=topic
@@ -518,7 +504,6 @@ class Reference:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
         
-
 def messagehandler(mqc,userdata,msg):
     if str(msg.topic) == globaltopic+"reset-autoremove":
         if not args.autoremove and verbosity>=1:
@@ -661,7 +646,6 @@ def main():
     parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
     parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
  
-    
     control = Control()
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -681,10 +665,6 @@ def main():
     
     if verbosity>=0:
         print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
-
-
-    
-
 
     # type, topic, slaveid,  ref,           size, functioncode, rate
     # type, topic, reference, rw, interpretation,      scaling,
@@ -747,8 +727,6 @@ def main():
                 else:
                     print("No poller for reference "+row["topic"]+".")
     
-
-    
     #Setup MODBUS Master
     global master
     if args.rtu:
@@ -803,7 +781,6 @@ def main():
                 print("Unknown TLS version - ignoring")
             tls_version = None
     
-    
         if args.mqtt_insecure:
             cert_regs = ssl.CERT_NONE
         else:
@@ -813,7 +790,6 @@ def main():
     
         if args.mqtt_insecure:
             mqc.tls_insecure_set(True)
-    
     
     if len(pollers)<1:
         print("No pollers. Exitting.")
