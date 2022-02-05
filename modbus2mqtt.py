@@ -39,7 +39,7 @@ import ssl
 import math
 import struct
 
-import addToHomeAssistant
+from .addToHomeAssistant import HassConnector
 
 from pymodbus.pdu import ModbusRequest
 from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
