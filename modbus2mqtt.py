@@ -46,41 +46,20 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-version="0.5"
-    
-parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
-parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
-parser.add_argument('--mqtt-port', default=None, type=int, help='Defaults to 8883 for TLS or 1883 for non-TLS')
-parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
-parser.add_argument('--mqtt-user', default=None, help='Username for authentication (optional)')
-parser.add_argument('--mqtt-pass', default="", help='Password for authentication (optional)')
-parser.add_argument('--mqtt-use-tls', action='store_true', help='Use TLS')
-parser.add_argument('--mqtt-insecure', action='store_true', help='Use TLS without providing certificates')
-parser.add_argument('--mqtt-cacerts', default=None, help="Path to keychain including ")
-parser.add_argument('--mqtt-tls-version', default=None, help='TLS protocol version, can be one of tlsv1.2 tlsv1.1 or tlsv1')
-parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial port')
-parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
-parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
-parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
-parser.add_argument('--tcp-port', default='502', type=int, help='Port for MODBUS TCP. Defaults to 502')
-parser.add_argument('--set-modbus-timeout',default='1',type=float, help='Response time-out for MODBUS devices')
-parser.add_argument('--config', required=True, help='Configuration file. Required!')
-parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=mb writes, 4=all')
-parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times. Removed pollers can be reactivated by sending "True" or "1" to topic modbus/reset-autoremove')
-parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
-parser.add_argument('--always-publish',action='store_true',help='Always publish values, even if they did not change.')
-parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
-parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
-
-args=parser.parse_args()
-verbosity=args.verbosity
-loopBreak=args.set_loop_break
-if loopBreak == 0:
-    loopBreak = 0.01
-    print("ERROR: Loop break must not be 0! Using default value (0.01) instead.")
-addToHass=False
-addToHass=args.add_to_homeassistant
-
+version = "0.5"
+mqtt_port = None
+mqc = None
+parser = None
+args = None
+verbosity = None
+addToHass = None
+loopBreak = None
+globaltopic = None
+pollers = []
+deviceList = []
+referenceList = []
+master = None
+control = None
 
 class Control:
     def __init__(self):
@@ -88,25 +67,14 @@ class Control:
     def stopLoop(self):
         self.runLoop = False
 
-control = Control()
 
-globaltopic=args.mqtt_topic
-
-if not globaltopic.endswith("/"):
-    globaltopic+="/"
-
-if verbosity>=0:
-    print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
-
-master=None
 
 def signal_handler(signal, frame):
+        global control
         print('Exiting ' + sys.argv[0])
         control.stopLoop()
-signal.signal(signal.SIGINT, signal_handler)
 
-deviceList=[]
-referenceList=[]
+
 
 
 class Device:
@@ -551,68 +519,6 @@ class Reference:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
         
-pollers=[]
-
-# type, topic, slaveid,  ref,           size, functioncode, rate
-# type, topic, reference, rw, interpretation,      scaling,
-
-# Now let's read the config file
-with open(args.config,"r") as csvfile:
-    csvfile.seek(0)
-    reader=csv.DictReader(csvfile)
-    currentPoller=None
-    for row in reader:
-        if row["type"]=="poller" or row["type"]=="poll":
-            rate = float(row["col6"])
-            slaveid = int(row["col2"])
-            reference = int(row["col3"])
-            size = int(row["col4"])
-            
-            if row["col5"] == "holding_register":
-                functioncode = 3
-                dataType="int16"
-                if size>123: #applies to TCP, RTU should support 125 registers. But let's be safe.
-                    currentPoller=None
-                    if verbosity>=1:
-                        print("Too many registers (max. 123). Ignoring poller "+row["topic"]+".")
-                    continue
-            elif row["col5"] == "coil":
-                functioncode = 1
-                dataType="bool"
-                if size>2000: #some implementations don't seem to support 2008 coils/inputs
-                    currentPoller=None
-                    if verbosity>=1:
-                        print("Too many coils (max. 2000). Ignoring poller "+row["topic"]+".")
-                    continue
-            elif row["col5"] == "input_register":
-                functioncode = 4
-                dataType="int16"
-                if size>123:
-                    currentPoller=None
-                    if verbosity>=1:
-                        print("Too many registers (max. 123). Ignoring poller "+row["topic"]+".")
-                    continue
-            elif row["col5"] == "input_status":
-                functioncode = 2
-                dataType="bool"
-                if size>2000:
-                    currentPoller=None
-                    if verbosity>=1:
-                        print("Too many inputs (max. 2000). Ignoring poller "+row["topic"]+".")
-                    continue
-
-            else:
-                print("Unknown function code ("+row["col5"]+" ignoring poller "+row["topic"]+".")
-                currentPoller=None
-                continue
-            currentPoller = Poller(row["topic"],rate,slaveid,functioncode,reference,size,dataType)
-            pollers.append(currentPoller)
-            continue
-        elif row["type"]=="reference" or row["type"]=="ref":
-            if currentPoller is not None:
-                currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller,row["col5"]))
-            else:
-                print("No poller for reference "+row["topic"]+".")
 
 def messagehandler(mqc,userdata,msg):
     if str(msg.topic) == globaltopic+"reset-autoremove":
@@ -721,137 +627,261 @@ def loghandler(mgc, userdata, level, buf):
     if verbosity >= 4:
         print("MQTT LOG:" + buf)
 
-#Setup MODBUS Master
-if args.rtu:
-    if args.rtu_parity == "none":
-            parity = "N"
-    if args.rtu_parity == "odd":
-            parity = "O"
-    if args.rtu_parity == "even":
-            parity = "E"
+def main():
+    global parser
+    global args
+    global verbosity 
+    global addToHass
+    global loopBreak
+    global globaltopic
+    global control
 
-    master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
+    parser = argparse.ArgumentParser(description='Bridge between ModBus and MQTT')
+    parser.add_argument('--mqtt-host', default='localhost', help='MQTT server address. Defaults to "localhost"')
+    parser.add_argument('--mqtt-port', default=None, type=int, help='Defaults to 8883 for TLS or 1883 for non-TLS')
+    parser.add_argument('--mqtt-topic', default='modbus/', help='Topic prefix to be used for subscribing/publishing. Defaults to "modbus/"')
+    parser.add_argument('--mqtt-user', default=None, help='Username for authentication (optional)')
+    parser.add_argument('--mqtt-pass', default="", help='Password for authentication (optional)')
+    parser.add_argument('--mqtt-use-tls', action='store_true', help='Use TLS')
+    parser.add_argument('--mqtt-insecure', action='store_true', help='Use TLS without providing certificates')
+    parser.add_argument('--mqtt-cacerts', default=None, help="Path to keychain including ")
+    parser.add_argument('--mqtt-tls-version', default=None, help='TLS protocol version, can be one of tlsv1.2 tlsv1.1 or tlsv1')
+    parser.add_argument('--rtu',help='pyserial URL (or port name) for RTU serial port')
+    parser.add_argument('--rtu-baud', default='19200', type=int, help='Baud rate for serial port. Defaults to 19200')
+    parser.add_argument('--rtu-parity', default='even', choices=['even','odd','none'], help='Parity for serial port. Defaults to even')
+    parser.add_argument('--tcp', help='Act as a Modbus TCP master, connecting to host TCP')
+    parser.add_argument('--tcp-port', default='502', type=int, help='Port for MODBUS TCP. Defaults to 502')
+    parser.add_argument('--set-modbus-timeout',default='1',type=float, help='Response time-out for MODBUS devices')
+    parser.add_argument('--config', required=True, help='Configuration file. Required!')
+    parser.add_argument('--verbosity', default='3', type=int, help='Verbose level, 0=silent, 1=errors only, 2=connections, 3=mb writes, 4=all')
+    parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times. Removed pollers can be reactivated by sending "True" or "1" to topic modbus/reset-autoremove')
+    parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
+    parser.add_argument('--always-publish',action='store_true',help='Always publish values, even if they did not change.')
+    parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
+    parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
+ 
+    
+    control = Control()
+    signal.signal(signal.SIGINT, signal_handler)
 
-elif args.tcp:
-    master = TCPModbusClient(args.tcp, args.tcp_port,client_id="modbus2mqtt", clean_session=False)
-else:
-    print("You must specify a modbus access method, either --rtu or --tcp")
+    args=parser.parse_args()
+    verbosity=args.verbosity
+    loopBreak=args.set_loop_break
+    if loopBreak == 0:
+        loopBreak = 0.01
+        print("ERROR: Loop break must not be 0! Using default value (0.01) instead.")
+    addToHass=False
+    addToHass=args.add_to_homeassistant
+    
+    globaltopic=args.mqtt_topic
+    
+    if not globaltopic.endswith("/"):
+        globaltopic+="/"
+    
+    if verbosity>=0:
+        print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
+
+
+    
+
+
+    # type, topic, slaveid,  ref,           size, functioncode, rate
+    # type, topic, reference, rw, interpretation,      scaling,
+    
+    # Now let's read the config file
+    with open(args.config,"r") as csvfile:
+        csvfile.seek(0)
+        reader=csv.DictReader(csvfile)
+        currentPoller=None
+        for row in reader:
+            if row["type"]=="poller" or row["type"]=="poll":
+                rate = float(row["col6"])
+                slaveid = int(row["col2"])
+                reference = int(row["col3"])
+                size = int(row["col4"])
+                
+                if row["col5"] == "holding_register":
+                    functioncode = 3
+                    dataType="int16"
+                    if size>123: #applies to TCP, RTU should support 125 registers. But let's be safe.
+                        currentPoller=None
+                        if verbosity>=1:
+                            print("Too many registers (max. 123). Ignoring poller "+row["topic"]+".")
+                        continue
+                elif row["col5"] == "coil":
+                    functioncode = 1
+                    dataType="bool"
+                    if size>2000: #some implementations don't seem to support 2008 coils/inputs
+                        currentPoller=None
+                        if verbosity>=1:
+                            print("Too many coils (max. 2000). Ignoring poller "+row["topic"]+".")
+                        continue
+                elif row["col5"] == "input_register":
+                    functioncode = 4
+                    dataType="int16"
+                    if size>123:
+                        currentPoller=None
+                        if verbosity>=1:
+                            print("Too many registers (max. 123). Ignoring poller "+row["topic"]+".")
+                        continue
+                elif row["col5"] == "input_status":
+                    functioncode = 2
+                    dataType="bool"
+                    if size>2000:
+                        currentPoller=None
+                        if verbosity>=1:
+                            print("Too many inputs (max. 2000). Ignoring poller "+row["topic"]+".")
+                        continue
+    
+                else:
+                    print("Unknown function code ("+row["col5"]+" ignoring poller "+row["topic"]+".")
+                    currentPoller=None
+                    continue
+                currentPoller = Poller(row["topic"],rate,slaveid,functioncode,reference,size,dataType)
+                pollers.append(currentPoller)
+                continue
+            elif row["type"]=="reference" or row["type"]=="ref":
+                if currentPoller is not None:
+                    currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller,row["col5"]))
+                else:
+                    print("No poller for reference "+row["topic"]+".")
+    
+
+    
+    #Setup MODBUS Master
+    global master
+    if args.rtu:
+        if args.rtu_parity == "none":
+                parity = "N"
+        if args.rtu_parity == "odd":
+                parity = "O"
+        if args.rtu_parity == "even":
+                parity = "E"
+        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
+    
+    elif args.tcp:
+        master = TCPModbusClient(args.tcp, args.tcp_port,client_id="modbus2mqtt", clean_session=False)
+    else:
+        print("You must specify a modbus access method, either --rtu or --tcp")
+        sys.exit(1)
+    
+    #Setup MQTT Broker
+    global mqtt_port
+    mqtt_port = args.mqtt_port
+    
+    if mqtt_port is None:
+        if args.mqtt_use_tls:
+            mqtt_port = 8883
+        else:
+            mqtt_port = 1883
+    
+    clientid=globaltopic + "-" + str(time.time())
+    global mqc
+    mqc=mqtt.Client(client_id=clientid)
+    mqc.on_connect=connecthandler
+    mqc.on_message=messagehandler
+    mqc.on_disconnect=disconnecthandler
+    mqc.on_log= loghandler
+    mqc.will_set(globaltopic+"connected","False",qos=2,retain=True)
+    mqc.initial_connection_attempted = False
+    mqc.initial_connection_made = False
+    if args.mqtt_user or args.mqtt_pass:
+        mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
+    
+    if args.mqtt_use_tls:
+        if args.mqtt_tls_version == "tlsv1.2":
+            tls_version = ssl.PROTOCOL_TLSv1_2
+        elif args.mqtt_tls_version == "tlsv1.1":
+            tls_version = ssl.PROTOCOL_TLSv1_1
+        elif args.mqtt_tls_version == "tlsv1":
+            tls_version = ssl.PROTOCOL_TLSv1
+        elif args.mqtt_tls_version is None:
+            tls_version = None
+        else:
+            if verbosity >= 2:
+                print("Unknown TLS version - ignoring")
+            tls_version = None
+    
+    
+        if args.mqtt_insecure:
+            cert_regs = ssl.CERT_NONE
+        else:
+            cert_regs = ssl.CERT_REQUIRED
+    
+        mqc.tls_set(ca_certs=args.mqtt_cacerts, certfile= None, keyfile=None, cert_reqs=cert_regs, tls_version=tls_version)
+    
+        if args.mqtt_insecure:
+            mqc.tls_insecure_set(True)
+    
+    
+    if len(pollers)<1:
+        print("No pollers. Exitting.")
+        sys.exit(0)
+    
+    #Main Loop
+    modbus_connected = False
+    while control.runLoop:
+        if not modbus_connected:
+            print("Connecting to MODBUS...")
+            modbus_connected = master.connect()
+            if modbus_connected:
+                if verbosity >= 2:
+                    print("MODBUS connected successfully")
+            else:
+                for p in pollers:
+                    p.failed=True
+                    if p.failcounter<3:
+                        p.failcounter=3
+                    p.failCount(p.failed)
+                if verbosity >= 1:
+                    print("MODBUS connection error, trying again...")
+    
+        if not mqc.initial_connection_attempted:
+           try:
+                print("Connecting to MQTT Broker: " + args.mqtt_host + ":" + str(mqtt_port) + "...")
+                mqc.connect(args.mqtt_host, mqtt_port, 60)
+                mqc.initial_connection_attempted = True #Once we have connected the mqc loop will take care of reconnections.
+                mqc.loop_start()
+                #Setup HomeAssistant
+                if(addToHass):
+                    adder=addToHomeAssistant.HassConnector(mqc,globaltopic,verbosity>=1)
+                    adder.addAll(referenceList)
+                if verbosity >= 1:
+                    print("MQTT Loop started")
+           except:
+                if verbosity>=1:
+                  print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(mqtt_port) + ", check LAN/Internet connection, trying again...")
+    
+        if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
+            if modbus_connected:
+                try:
+                    for p in pollers:
+                        p.checkPoll()
+    
+                    for d in deviceList:
+                        d.publishDiagnostics()
+                    anyAct=False
+                    for p in pollers:
+                        if p.disabled is not True:
+                            anyAct=True
+                    if not anyAct:
+                        time.sleep(5)
+                        for p in pollers:
+                            if p.disabled == True:
+                                p.disabled = False
+                                p.failcounter = 0
+                                if verbosity>=1:
+                                    print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
+    
+                except:
+                    if verbosity>=1:
+                        print("Exception Error when polling or publishing, trying again...")
+    
+        time.sleep(loopBreak)
+    
+    master.close()
+    #adder.removeAll(referenceList)
     sys.exit(1)
 
-#Setup MQTT Broker
-
-mqtt_port = args.mqtt_port
-
-if mqtt_port is None:
-    if args.mqtt_use_tls:
-        mqtt_port = 8883
-    else:
-        mqtt_port = 1883
-
-clientid=globaltopic + "-" + str(time.time())
-mqc=mqtt.Client(client_id=clientid)
-mqc.on_connect=connecthandler
-mqc.on_message=messagehandler
-mqc.on_disconnect=disconnecthandler
-mqc.on_log= loghandler
-mqc.will_set(globaltopic+"connected","False",qos=2,retain=True)
-mqc.initial_connection_attempted = False
-mqc.initial_connection_made = False
-if args.mqtt_user or args.mqtt_pass:
-    mqc.username_pw_set(args.mqtt_user, args.mqtt_pass)
-
-if args.mqtt_use_tls:
-    if args.mqtt_tls_version == "tlsv1.2":
-        tls_version = ssl.PROTOCOL_TLSv1_2
-    elif args.mqtt_tls_version == "tlsv1.1":
-        tls_version = ssl.PROTOCOL_TLSv1_1
-    elif args.mqtt_tls_version == "tlsv1":
-        tls_version = ssl.PROTOCOL_TLSv1
-    elif args.mqtt_tls_version is None:
-        tls_version = None
-    else:
-        if verbosity >= 2:
-            print("Unknown TLS version - ignoring")
-        tls_version = None
-
-
-    if args.mqtt_insecure:
-        cert_regs = ssl.CERT_NONE
-    else:
-        cert_regs = ssl.CERT_REQUIRED
-
-    mqc.tls_set(ca_certs=args.mqtt_cacerts, certfile= None, keyfile=None, cert_reqs=cert_regs, tls_version=tls_version)
-
-    if args.mqtt_insecure:
-        mqc.tls_insecure_set(True)
-
-
-if len(pollers)<1:
-    print("No pollers. Exitting.")
-    sys.exit(0)
-
-#Main Loop
-modbus_connected = False
-while control.runLoop:
-    if not modbus_connected:
-        print("Connecting to MODBUS...")
-        modbus_connected = master.connect()
-        if modbus_connected:
-            if verbosity >= 2:
-                print("MODBUS connected successfully")
-        else:
-            for p in pollers:
-                p.failed=True
-                if p.failcounter<3:
-                    p.failcounter=3
-                p.failCount(p.failed)
-            if verbosity >= 1:
-                print("MODBUS connection error, trying again...")
-
-    if not mqc.initial_connection_attempted:
-       try:
-            print("Connecting to MQTT Broker: " + args.mqtt_host + ":" + str(mqtt_port) + "...")
-            mqc.connect(args.mqtt_host, mqtt_port, 60)
-            mqc.initial_connection_attempted = True #Once we have connected the mqc loop will take care of reconnections.
-            mqc.loop_start()
-            #Setup HomeAssistant
-            if(addToHass):
-                adder=addToHomeAssistant.HassConnector(mqc,globaltopic,verbosity>=1)
-                adder.addAll(referenceList)
-            if verbosity >= 1:
-                print("MQTT Loop started")
-       except:
-            if verbosity>=1:
-              print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(mqtt_port) + ", check LAN/Internet connection, trying again...")
-
-    if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
-        if modbus_connected:
-            try:
-                for p in pollers:
-                    p.checkPoll()
-
-                for d in deviceList:
-                    d.publishDiagnostics()
-                anyAct=False
-                for p in pollers:
-                    if p.disabled is not True:
-                        anyAct=True
-                if not anyAct:
-                    time.sleep(5)
-                    for p in pollers:
-                        if p.disabled == True:
-                            p.disabled = False
-                            p.failcounter = 0
-                            if verbosity>=1:
-                                print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
-
-            except:
-                if verbosity>=1:
-                    print("Exception Error when polling or publishing, trying again...")
-
-    time.sleep(loopBreak)
-
-master.close()
-#adder.removeAll(referenceList)
-sys.exit(1)
-
+if __name__ == '__main__':
+    main()
