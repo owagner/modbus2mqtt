@@ -357,7 +357,6 @@ class dataTypes:
         for x in val:
             out+=chr(x>>8)
             out+=chr(x&0x00FF)
-            print(val)
         return out
 
     def parseint32LE(self,msg):
@@ -577,6 +576,8 @@ def messagehandler(mqc,userdata,msg):
     if myRef.writefunctioncode == 6:
         value = myRef.dtype.parse(str(payload))
         if value is not None:
+            if myRef.scale: # reverse scale if required
+                value = type(value)(value / myRef.scale)
             result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
             try:
                 if result.function_code < 0x80:

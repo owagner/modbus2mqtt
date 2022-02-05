@@ -180,3 +180,10 @@ So what exactly do they do? Completely different things actually.
 
 
 * create-openhab-conf.py can be used independently. It parses the .csv file and creates configuration files (.things and .items) for OpenHAB (version 2+ only). This is of course not necessary for using spicierModbus2mqtt whit OpenHab but it removes a lot of hassle from it. I use it to create a basic working structure and then rename and rearrange the items by hand.
+
+Docker
+------
+
+spicierModbus2mqtt can be run as a docker container, using the included Dockerfile. It allows all usual configuration options, with the expectation that it's configuration is at `/app/conf/modbus2mqtt.csv`. For example:
+
+`docker build -t modbus2mqtt . && docker run -v $(pwd)/example.csv:/app/conf/modbus2mqtt.csv modbus2mqtt --tcp <modbus-tcp-host> --mqtt-host <mqtt-host>`
