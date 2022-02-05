@@ -389,7 +389,6 @@ class dataTypes:
         for x in val:
             out+=chr(x>>8)
             out+=chr(x&0x00FF)
-            print(val)
         return out
 
     def parseint32LE(self,msg):
