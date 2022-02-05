@@ -821,7 +821,7 @@ def main():
                 mqc.loop_start()
                 #Setup HomeAssistant
                 if(addToHass):
-                    adder=addToHomeAssistant.HassConnector(mqc,globaltopic,verbosity>=1)
+                    adder=HassConnector(mqc,globaltopic,verbosity>=1)
                     adder.addAll(referenceList)
                 if verbosity >= 1:
                     print("MQTT Loop started")
