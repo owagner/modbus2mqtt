@@ -8,13 +8,20 @@ version = re.search(
     re.M
     ).group(1)
  
- 
-with open("README.md", "rb") as f:
-    long_descr = f.read().decode("utf-8")
+
+# for some stupid reason we need restructured text here.
+# For now I'll stick with markdown..
+#with open("README.md", "rb") as f:
+#    long_descr = f.read().decode("utf-8")
+long_descr = ""
 
 setup(
-    name = "spicierModbus2mqtt",
+    name = "modbus2mqtt",
     packages = ["modbus2mqtt"],
+    install_requires=[
+          'paho-mqtt',
+          'pymodbus',
+    ],
     entry_points = {
         "console_scripts": ['modbus2mqtt = modbus2mqtt.modbus2mqtt:main']
         },
