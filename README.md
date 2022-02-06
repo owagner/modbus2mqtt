@@ -79,18 +79,18 @@ Usage
 -----
 If you've installed using pip:
 
-* example for rtu and mqtt broker on localhost: modbus2mqtt --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
+* example for rtu and mqtt broker on localhost: `modbus2mqtt --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv`
 * example for tcp slave and mqtt broker
-    on localhost: modbus2mqtt --tcp localhost --config testing.csv
-    remotely:     modbus2mqtt --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org
+    on localhost: `modbus2mqtt --tcp localhost --config testing.csv`
+    remotely: `modbus2mqtt --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org`
 
 
 If you haven't installed modbus2mqtt you can run modbus2mqtt.py from the root directory of this repo directly:
 
-* example for rtu and mqtt broker on localhost: python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
+* example for rtu and mqtt broker on localhost: `python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv`
 * example for tcp slave and mqtt broker
-    on localhost: python3 modbus2mqtt.py --tcp localhost --config testing.csv
-    remotely:     python3 modbus2mqtt.py --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org
+    on localhost: `python3 modbus2mqtt.py --tcp localhost --config testing.csv`
+    remotely:     `python3 modbus2mqtt.py --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org`
 
 For docker support see below.
      
