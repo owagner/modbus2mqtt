@@ -47,7 +47,7 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-version = "0.5"
+__version__ = "0.5"
 mqtt_port = None
 mqc = None
 parser = None
@@ -665,7 +665,7 @@ def main():
         globaltopic+="/"
     
     if verbosity>=0:
-        print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(version, globaltopic))
+        print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(__version__, globaltopic))
 
     # type, topic, slaveid,  ref,           size, functioncode, rate
     # type, topic, reference, rw, interpretation,      scaling,
@@ -860,6 +860,3 @@ def main():
     master.close()
     #adder.removeAll(referenceList)
     sys.exit(1)
-
-if __name__ == '__main__':
-    main()
