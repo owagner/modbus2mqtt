@@ -59,7 +59,7 @@ So feel free to contribute!
 
 Installation
 ------------
-run `pip3 install modbus2mqtt`
+run `sudo pip3 install modbus2mqtt`
 
 Without installation
 --------------------
