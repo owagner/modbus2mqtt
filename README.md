@@ -19,6 +19,7 @@ an MQTT message broker is used as the centralized message bus.
 
 Changelog
 ---------
+- version 0.62, 6. of February 2022: major refactoring, project is now python module available via pip
 - version 0.5, 21. of September 2019: print error messages in case of badly configured pollers
 - version 0.4, 25. of May 2019: When writing to a device, updated states are now published immediately, if writing was successful.
 
@@ -53,27 +54,45 @@ There is still a lot of room for improvement! Especially in the realm of
 - maybe do not poll if the poller only has references that are write-only
 ...
 
-So be careful :-)
+So feel free to contribute!
 
-Dependencies
+
+Installation
 ------------
+run `pip3 install modbus2mqtt`
+
+Without installation
+--------------------
+Requirements:
+
 * python3
 * Eclipse Paho for Python - http://www.eclipse.org/paho/clients/python/
 * pymodbus - https://github.com/riptideio/pymodbus
 
-Installation of dependencies
-----------------------------
+Installation of requirements:
+
 * Install python3 and python3-pip and python3-serial (on a Debian based system something like sudo apt install python3 python3-pip python3-serial will likely get you there)
 * run pip3 install pymodbus
 * run pip3 install paho-mqtt
 
 Usage
 -----
+If you've installed using pip:
+
+* example for rtu and mqtt broker on localhost: modbus2mqtt --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
+* example for tcp slave and mqtt broker
+    on localhost: modbus2mqtt --tcp localhost --config testing.csv
+    remotely:     modbus2mqtt --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org
+
+
+If you haven't installed modbus2mqtt you can run modbus2mqtt.py from the root directory of this repo directly:
+
 * example for rtu and mqtt broker on localhost: python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv
 * example for tcp slave and mqtt broker
     on localhost: python3 modbus2mqtt.py --tcp localhost --config testing.csv
     remotely:     python3 modbus2mqtt.py --tcp 192.168.1.7 --config example.csv --mqtt-host iot.eclipse.org
 
+For docker support see below.
      
 Configuration file
 -------------------
