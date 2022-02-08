@@ -1,7 +1,7 @@
 FROM python:alpine
 WORKDIR /app
 COPY modbus2mqtt.py ./
-COPY addToHomeAssistant.py ./
+COPY modbus2mqtt modbus2mqtt/
 RUN mkdir -p /app/conf/
 RUN pip install --no-cache-dir pymodbus
 RUN pip install --no-cache-dir paho-mqtt
