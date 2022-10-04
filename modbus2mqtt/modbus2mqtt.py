@@ -47,7 +47,7 @@ from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
 from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
 from pymodbus.transaction import ModbusRtuFramer
 
-__version__ = "0.62"
+__version__ = "0.63"
 mqtt_port = None
 mqc = None
 parser = None

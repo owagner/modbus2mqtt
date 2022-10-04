@@ -19,6 +19,7 @@ an MQTT message broker is used as the centralized message bus.
 
 Changelog
 ---------
+- version 0.63, 04. of October 2022: added reading and writing of int32 values, fix regarding negative floats
 - version 0.62, 6. of February 2022: major refactoring, project is now python module available via pip
 - version 0.5, 21. of September 2019: print error messages in case of badly configured pollers
 - version 0.4, 25. of May 2019: When writing to a device, updated states are now published immediately, if writing was successful.
