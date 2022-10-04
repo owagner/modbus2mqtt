@@ -283,14 +283,14 @@ class dataTypes:
             self.combine=self.combineString
             self.stringLength=length
             self.regAmount=int(length/2)
-        #elif conf == "int32LE":
-           # self.parse=self.parseint32LE
-           # self.combine=self.combineint32LE
-           # self.regAmount=2          
-        #elif conf == "int32BE":
-         #   self.regAmount=2
-          #  self.parse=self.parseint32BE
-           # self.combine=self.combineint32BE
+        elif conf == "int32LE":
+            self.parse=self.parseint32LE
+            self.combine=self.combineint32LE
+            self.regAmount=2          
+        elif conf == "int32BE":
+            self.regAmount=2
+            self.parse=self.parseint32BE
+            self.combine=self.combineint32BE
         elif conf == "int16":
             self.regAmount=1         
             self.parse=self.parseint16
@@ -351,15 +351,6 @@ class dataTypes:
             out+=chr(x&0x00FF)
         return out
 
-    def parseint32LE(self,msg):
-        pass
-    def combineint32LE(self,val):
-        pass
-    
-    def parseint32BE(self,msg):
-        pass
-    def combineint32BE(self,val):
-        pass
     def parseint16(self,msg):
         try:
             value=int(msg)
@@ -409,6 +400,30 @@ class dataTypes:
         return out
     def combineuint32BE(self,val):
         out = val[0] + val[1]*65536
+        return out
+
+    def parseint32LE(self,msg):
+        try:
+            value=int(msg)
+            value = int.from_bytes(value.to_bytes(4, 'little', signed=False), 'little', signed=True)
+        except:
+            out=None
+        return out
+    def combineint32LE(self,val):
+        out = val[0]*65536 + val[1]
+        out = int.from_bytes(out.to_bytes(4, 'little', signed=False), 'little', signed=True)
+        return out
+
+    def parseint32BE(self,msg):
+        try:
+            value=int(msg)
+            value = int.from_bytes(value.to_bytes(4, 'big', signed=False), 'big', signed=True)
+        except:
+            out=None
+        return out
+    def combineint32BE(self,val):
+        out = val[0] + val[1]*65536
+        out = int.from_bytes(out.to_bytes(4, 'big', signed=False), 'big', signed=True)
         return out
     
     def parseuint16(self,msg):
