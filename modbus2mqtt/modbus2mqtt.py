@@ -438,7 +438,7 @@ class dataTypes:
             out=None
         return out
     def combinefloat32LE(self,val):
-        out = str(struct.unpack('=f', struct.pack('=i',int(val[0])<<16|int(val[1])))[0])
+        out = str(struct.unpack('=f', struct.pack('=I',int(val[0])<<16|int(val[1])))[0])
         return out
 
     def parsefloat32BE(self,msg):
@@ -453,7 +453,7 @@ class dataTypes:
             out=None
         return out
     def combinefloat32BE(self,val):
-        out = str(struct.unpack('=f', struct.pack('=i',int(val[1])<<16|int(val[0])))[0])
+        out = str(struct.unpack('=f', struct.pack('=I',int(val[1])<<16|int(val[0])))[0])
         return out
 
 class Reference:
