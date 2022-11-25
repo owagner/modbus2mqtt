@@ -43,11 +43,16 @@ import struct
 from .addToHomeAssistant import HassConnector
 
 from pymodbus.pdu import ModbusRequest
-from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
-from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
+
+try: # little hack to fix incompatibility with pymodbus version 3. Will deprecate older versions one day.. 
+    from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
+    from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
+except:
+    from pymodbus.client import ModbusSerialClient as SerialModbusClient
+    from pymodbus.client import ModbusTcpClient as TCPModbusClient 
 from pymodbus.transaction import ModbusRtuFramer
 
-__version__ = "0.63"
+__version__ = "0.65"
 mqtt_port = None
 mqc = None
 parser = None
