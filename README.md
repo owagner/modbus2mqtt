@@ -26,22 +26,9 @@ Changelog
 - version 0.5, 21. of September 2019: print error messages in case of badly configured pollers
 - version 0.4, 25. of May 2019: When writing to a device, updated states are now published immediately, if writing was successful.
 
-Why spicier?
+Spicier?
 ------------
-modbus2mqtt by Oliver Wagner is very nicely written but it has some downsides:
-- polling of consecutive references (coils/registers) is not done within a single modbus
-  request. Instead there is a modbus request for every single reference which dramatically
-  limits the performance of the whole bus.
-- performance is limited to one modbus request per second artificially
-- writing to a modbus slave device from the mqtt side requires knowledge about the location
-  of data points (coils and registers) within the slave device.
-- the library modbus_tk seems to have some unfixed bugs with multiple serial slave devices
-
-These issues are not likely to be resolved in modbus2mqtt because it has not seen any development in a while. So I decided to do a bit of a rewrite and change a couple of things.
-
-A new structure of coil/register definitions was devised in order to poll consecutive registers in one request. Unfortunately this breaks compatibility with the original register definition files but there is no way around it.
-
-Main improvements over modbus2mqtt:
+Main improvements over modbus2mqtt by Oliver Wagner:
 - more abstraction when writing to coils/registers using mqtt. Writing is now
   possible without having to know slave id, reference, function code etc.
 - specific coils/registers can be made read only
@@ -51,7 +38,7 @@ Main improvements over modbus2mqtt:
 - switched over to pymodbus which is in active development.
 - Improved error handling, the software will continuously retry when the network or device goes down.
 
-There is still a lot of room for improvement! Especially in the realm of
+There is still room for improvement! Especially in the realm of
 - documentation
 - process deadbands for registers so MQTT values are only sent when the modbus register goes above or below the deadband.
 - maybe do not poll if the poller only has references that are write-only
