@@ -221,7 +221,7 @@ class Poller:
                             p.failcounter=3
                         p.failCount(p.failed)
                     if verbosity >= 1:
-                        print("MODBUS connection error, trying again...")
+                        print("MODBUS connection error (poller), trying again...")
 
     def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
@@ -286,7 +286,7 @@ class dataTypes:
         elif conf == "int32LE":
             self.parse=self.parseint32LE
             self.combine=self.combineint32LE
-            self.regAmount=2          
+            self.regAmount=2
         elif conf == "int32BE":
             self.regAmount=2
             self.parse=self.parseint32BE
@@ -827,7 +827,7 @@ def main():
                         p.failcounter=3
                     p.failCount(p.failed)
                 if verbosity >= 1:
-                    print("MODBUS connection error, trying again...")
+                    print("MODBUS connection error (mainLoop), trying again...")
     
         if not mqc.initial_connection_attempted:
            try:
@@ -843,7 +843,7 @@ def main():
                     print("MQTT Loop started")
            except:
                 if verbosity>=1:
-                  print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(mqtt_port) + ", check LAN/Internet connection, trying again...")
+                    print("Socket Error connecting to MQTT broker: " + args.mqtt_host + ":" + str(mqtt_port) + ", check LAN/Internet connection, trying again...")
     
         if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
             if modbus_connected:

@@ -19,6 +19,7 @@ an MQTT message broker is used as the centralized message bus.
 
 Changelog
 ---------
+- version 0.64, 16. of October 2022: Adjustment of the Dockerfile (enforcing pymodbus 2.5.3, otherwise it tries to use 3.0 and this failes); typo fixed; main-/poller-loop log entry
 - version 0.63, 04. of October 2022: added reading and writing of int32 values, fix regarding negative floats
 - version 0.62, 6. of February 2022: major refactoring, project is now python module available via pip
 - version 0.5, 21. of September 2019: print error messages in case of badly configured pollers
