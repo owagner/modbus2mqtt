@@ -408,24 +408,26 @@ class dataTypes:
         return out
 
     def parseint32LE(self,msg):
-        try:
-            value=int(msg)
-            value = int.from_bytes(value.to_bytes(4, 'little', signed=False), 'little', signed=True)
-        except:
-            out=None
-        return out
+        #try:
+        #    value=int(msg)
+        #    value = int.from_bytes(value.to_bytes(4, 'little', signed=False), 'little', signed=True)
+        #except:
+        #    out=None
+        #return out
+        return None
     def combineint32LE(self,val):
         out = val[0]*65536 + val[1]
         out = int.from_bytes(out.to_bytes(4, 'little', signed=False), 'little', signed=True)
         return out
 
     def parseint32BE(self,msg):
-        try:
-            value=int(msg)
-            value = int.from_bytes(value.to_bytes(4, 'big', signed=False), 'big', signed=True)
-        except:
-            out=None
-        return out
+        #try:
+        #    value=int(msg)
+        #    value = int.from_bytes(value.to_bytes(4, 'big', signed=False), 'big', signed=True)
+        #except:
+        #    out=None
+        #return out
+        return None
     def combineint32BE(self,val):
         out = val[0] + val[1]*65536
         out = int.from_bytes(out.to_bytes(4, 'big', signed=False), 'big', signed=True)
