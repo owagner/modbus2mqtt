@@ -586,7 +586,14 @@ def messagehandler(mqc,userdata,msg):
         if value is not None:
             #if myRef.scale: # reverse scale if required
             #    value = type(value)(value / myRef.scale)
-            result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+            try:
+                valLen=len(value)
+            except:
+                valLen=1
+            if valLen>1:
+                result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+            else:
+                result = master.write_register(int(myRef.reference),value,unit=myRef.device.slaveid)
             try:
                 if result.function_code < 0x80:
                     myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
