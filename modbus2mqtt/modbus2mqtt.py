@@ -52,7 +52,7 @@ except:
     from pymodbus.client import ModbusTcpClient as TCPModbusClient 
 from pymodbus.transaction import ModbusRtuFramer
 
-__version__ = "0.65"
+__version__ = "0.66"
 mqtt_port = None
 mqc = None
 parser = None
@@ -205,7 +205,7 @@ class Poller:
                             ref.checkPublish(val)
                     else:
                         if verbosity>=1:
-                            print("Slave device "+str(self.slaveid)+" responded with error code: "+str(result.function_code))
+                            print("Slave device "+str(self.slaveid)+" responded with error code:"+str(result).split(',', 3)[2].rstrip(')'))
                 except:
                     failed = True
                     if verbosity>=1:
@@ -569,7 +569,7 @@ def messagehandler(mqc,userdata,msg):
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                     else:
                         if verbosity>=1:
-                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode"+str(result).split(',', 3)[2].rstrip(')')+". Maybe bad configuration?)")
             
                 except:
                     if verbosity>=1:
@@ -592,7 +592,7 @@ def messagehandler(mqc,userdata,msg):
                         print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                 else:
                     if verbosity>=1:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode. Maybe bad configuration?)")
+                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode"+str(result).split(',', 3)[2].rstrip(')')+". Maybe bad configuration?)")
             except:
                 if verbosity >= 1:
                     print("Error writing to slave device "+str(myDevice.slaveid)+" (maybe CRC error or timeout)")
