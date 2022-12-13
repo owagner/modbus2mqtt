@@ -272,6 +272,17 @@ def dataTypes(self,conf):
         self.regAmount=1
         self.parse=parseuint16
         self.combine=combineuint16
+    elif conf.startswith("list-uint16-"):
+        try:
+            length = int(conf[12:15])
+        except:
+            length = 1
+        if length > 50:
+            print("Data type list-uint16: length too long")
+            length = 50
+        self.parse=parseListUint16
+        self.combine=combineListUint16
+        self.regAmount=length
     elif conf.startswith("string"):
         try:
             length = int(conf[6:9])
@@ -335,6 +346,26 @@ def combinebool(self,val):
         return bool(val[0])
     except:
         return bool(val)
+
+def parseListUint16(self,msg):
+    out=[]
+    try:
+        msg=msg.rstrip()
+        msg=msg.lstrip()
+        msg=msg.split(" ")
+        if len(msg) != self.regAmount:
+            return None
+        for x in range(0, len(msg)):
+            out.append(int(msg[x]))
+    except:
+        return None
+    return out
+
+def combineListUint16(self,val):
+    out=""
+    for x in val:
+        out+=str(x)+" "
+    return out
 
 def parseString(self,msg):
     out=[]
