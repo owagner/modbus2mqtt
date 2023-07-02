@@ -52,7 +52,7 @@ except:
     from pymodbus.client import ModbusTcpClient as TCPModbusClient 
 from pymodbus.transaction import ModbusRtuFramer
 
-__version__ = "0.66"
+__version__ = "0.67"
 mqtt_port = None
 mqc = None
 parser = None
