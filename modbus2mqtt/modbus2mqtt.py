@@ -172,26 +172,26 @@ class Poller:
                 failed = False
                 try:
                     if self.functioncode == 3:
-                        result = master.read_holding_registers(self.reference, self.size, unit=self.slaveid)
+                        result = master.read_holding_registers(self.reference, self.size, self.slaveid)
                         if result.function_code < 0x80:
                             data = result.registers
                         else:
                             failed = True
                     if self.functioncode == 1:
-                        result = master.read_coils(self.reference, self.size, unit=self.slaveid)
+                        result = master.read_coils(self.reference, self.size, self.slaveid)
                         if result.function_code < 0x80:
                             data = result.bits
                         else:
                             failed = True
 
                     if self.functioncode == 2:
-                        result = master.read_discrete_inputs(self.reference, self.size, unit=self.slaveid)
+                        result = master.read_discrete_inputs(self.reference, self.size, self.slaveid)
                         if result.function_code < 0x80:
                             data = result.bits
                         else:
                             failed = True
                     if self.functioncode == 4:
-                        result = master.read_input_registers(self.reference, self.size, unit=self.slaveid)
+                        result = master.read_input_registers(self.reference, self.size, self.slaveid)
                         if result.function_code < 0x80:
                             data = result.registers
                         else:
@@ -594,7 +594,7 @@ def messagehandler(mqc,userdata,msg):
     if myRef.writefunctioncode == 5:
         value = myRef.parse(myRef,str(payload))
         if value != None:
-                result = master.write_coil(int(myRef.reference),value,unit=int(myRef.device.slaveid))
+                result = master.write_coil(int(myRef.reference),value,int(myRef.device.slaveid))
                 try:
                     if result.function_code < 0x80:
                         myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
@@ -622,9 +622,9 @@ def messagehandler(mqc,userdata,msg):
             except:
                 valLen=1
             if valLen>1:
-                result = master.write_registers(int(myRef.reference),value,unit=myRef.device.slaveid)
+                result = master.write_registers(int(myRef.reference),value,myRef.device.slaveid)
             else:
-                result = master.write_register(int(myRef.reference),value,unit=myRef.device.slaveid)
+                result = master.write_register(int(myRef.reference),value,myRef.device.slaveid)
             try:
                 if result.function_code < 0x80:
                     myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
