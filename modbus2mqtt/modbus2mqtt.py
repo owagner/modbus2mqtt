@@ -41,6 +41,7 @@ import math
 import struct
 
 from .addToHomeAssistant import HassConnector
+from .dataTypes import DataTypes
 
 from pymodbus.pdu import ModbusRequest
 
@@ -267,216 +268,6 @@ class Poller:
         else:
             print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
-def dataTypes(self,conf):
-    if conf is None or conf == "uint16" or conf == "":
-        self.regAmount=1
-        self.parse=parseuint16
-        self.combine=combineuint16
-    elif conf.startswith("string"):
-        try:
-            length = int(conf[6:9])
-        except:
-            length = 2
-        if length > 100:
-            print("Data type string: length too long")
-            length = 100
-        if  math.fmod(length,2) != 0:
-            length=length-1
-            print("Data type string: length must be divisible by 2")
-        self.parse=parseString
-        self.combine=combineString
-        self.stringLength=length
-        self.regAmount=int(length/2)
-    elif conf == "int32LE":
-        self.parse=parseint32LE
-        self.combine=combineint32LE
-        self.regAmount=2
-    elif conf == "int32BE":
-        self.regAmount=2
-        self.parse=parseint32BE
-        self.combine=combineint32BE
-    elif conf == "int16":
-        self.regAmount=1
-        self.parse=parseint16
-        self.combine=combineint16
-    elif conf == "uint32LE":
-        self.regAmount=2
-        self.parse=parseuint32LE
-        self.combine=combineuint32LE
-    elif conf == "uint32BE":
-        self.regAmount=2
-        self.parse=parseuint32BE
-        self.combine=combineuint32BE
-    elif conf == "bool":
-        self.regAmount=1
-        self.parse=parsebool
-        self.combine=combinebool
-    elif conf == "float32LE":
-        self.regAmount=2
-        self.parse=parsefloat32LE
-        self.combine=combinefloat32LE
-    elif conf == "float32BE":
-       self.regAmount=2
-       self.parse=parsefloat32BE
-       self.combine=combinefloat32BE
-
-def parsebool(self,payload):
-    if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
-        value = True
-    elif payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
-        value = False
-    else:
-        value = None
-    return value
-
-def combinebool(self,val):
-    try:
-        len(val)
-        return bool(val[0])
-    except:
-        return bool(val)
-
-def parseString(self,msg):
-    out=[]
-    if len(msg)<=self.stringLength:
-        for x in range(1,len(msg)+1):
-            if math.fmod(x,2)>0:
-                out.append(ord(msg[x-1])<<8)
-            else:
-                pass
-                out[int(x/2-1)]+=ord(msg[x-1])
-    else:
-        out = None
-    return out
-def combineString(self,val):
-    out=""
-    for x in val:
-        out+=chr(x>>8)
-        out+=chr(x&0x00FF)
-    return out
-
-def parseint16(self,msg):
-    try:
-        value=int(msg)
-        if value > 32767 or value < -32768:
-            out = None
-        else:
-            out = value&0xFFFF
-    except:
-        out=None
-    return out
-def combineint16(self,val):
-    try:
-        len(val)
-        myval=val[0]
-    except:
-        myval=val
-
-    if (myval & 0x8000) > 0:
-        out = -((~myval & 0x7FFF)+1)
-    else:
-        out = myval
-    return out
-
-def parseuint32LE(self,msg):
-    try:
-        value=int(msg)
-        if value > 4294967295 or value < 0:
-            out = None
-        else:
-            out=[int(value>>16),int(value&0x0000FFFF)]
-    except:
-        out=None
-    return out
-def combineuint32LE(self,val):
-    out = val[0]*65536 + val[1]
-    return out
-
-def parseuint32BE(self,msg):
-    try:
-        value=int(msg)
-        if value > 4294967295 or value < 0:
-            out = None
-        else:
-            out=[int(value&0x0000FFFF),int(value>>16)]
-    except:
-        out=None
-    return out
-def combineuint32BE(self,val):
-    out = val[0] + val[1]*65536
-    return out
-
-def parseint32LE(self,msg):
-    #try:
-    #    value=int(msg)
-    #    value = int.from_bytes(value.to_bytes(4, 'little', signed=False), 'little', signed=True)
-    #except:
-    #    out=None
-    #return out
-    return None
-def combineint32LE(self,val):
-    out = val[0]*65536 + val[1]
-    out = int.from_bytes(out.to_bytes(4, 'little', signed=False), 'little', signed=True)
-    return out
-
-def parseint32BE(self,msg):
-    #try:
-    #    value=int(msg)
-    #    value = int.from_bytes(value.to_bytes(4, 'big', signed=False), 'big', signed=True)
-    #except:
-    #    out=None
-    #return out
-    return None
-def combineint32BE(self,val):
-    out = val[0] + val[1]*65536
-    out = int.from_bytes(out.to_bytes(4, 'big', signed=False), 'big', signed=True)
-    return out
-
-def parseuint16(self,msg):
-    try:
-        value=int(msg)
-        if value > 65535 or value < 0:
-            value = None
-    except:
-        value=None
-    return value
-def combineuint16(self,val):
-    try:
-        len(val)
-        return val[0]
-    except:
-        return val
-
-def parsefloat32LE(self,msg):
-    try:
-        out=None
-        #value=int(msg)
-        #if value > 4294967295 or value < 0:
-        #    out = None
-        #else:
-        #    out=[int(value&0x0000FFFF),int(value>>16)]
-    except:
-        out=None
-    return out
-def combinefloat32LE(self,val):
-    out = str(struct.unpack('=f', struct.pack('=I',int(val[0])<<16|int(val[1])))[0])
-    return out
-
-def parsefloat32BE(self,msg):
-    try:
-        out=None
-        #value=int(msg)
-        #if value > 4294967295 or value < 0:
-        #    out = None
-        #else:
-        #    out=[int(value&0x0000FFFF),int(value>>16)]
-    except:
-        out=None
-    return out
-def combinefloat32BE(self,val):
-    out = str(struct.unpack('=f', struct.pack('=I',int(val[1])<<16|int(val[0])))[0])
-    return out
-
 class Reference:
     def __init__(self,topic,reference,dtype,rw,poller,scaling):
         self.topic=topic
@@ -498,12 +289,12 @@ class Reference:
         self.device=None
         self.poller=poller
         if self.poller.functioncode == 1:
-            dataTypes(self,"bool")
+            DataTypes.parseDataType(self,"bool")
             
         elif self.poller.functioncode == 2:
-            dataTypes(self,"bool")
+            DataTypes.parseDataType(self,"bool")
         else:
-            dataTypes(self,dtype)
+            DataTypes.parseDataType(self,dtype)
 
     def checkSanity(self,reference,size):
         if self.reference in range(reference,size+reference) and self.reference+self.regAmount-1 in range(reference,size+reference):
