@@ -39,20 +39,23 @@ import random
 import ssl
 import math
 import struct
+import queue
 
 from .addToHomeAssistant import HassConnector
+from .dataTypes import DataTypes
 
-from pymodbus.pdu import ModbusRequest
+import pymodbus
+import asyncio
 
-try: # little hack to fix incompatibility with pymodbus version 3. Will deprecate older versions one day.. 
-    from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
-    from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
-except:
-    from pymodbus.client import ModbusSerialClient as SerialModbusClient
-    from pymodbus.client import ModbusTcpClient as TCPModbusClient 
-from pymodbus.transaction import ModbusRtuFramer
+from pymodbus.client import (
+    AsyncModbusSerialClient,
+    AsyncModbusTcpClient,
+    AsyncModbusTlsClient,
+    AsyncModbusUdpClient,
+)
+from pymodbus.exceptions import ModbusIOException
 
-__version__ = "0.67"
+__version__ = "0.68"
 mqtt_port = None
 mqc = None
 parser = None
@@ -66,6 +69,8 @@ deviceList = []
 referenceList = []
 master = None
 control = None
+
+writeQueue = queue.SimpleQueue()
 
 class Control:
     def __init__(self):
@@ -166,71 +171,53 @@ class Poller:
                 if self.failcounter<3:
                     self.failcounter+=1
 
-    def poll(self):
+    async def poll(self):
             result = None
-            if master.is_socket_open()==True:
-                failed = False
-                try:
-                    if self.functioncode == 3:
-                        result = master.read_holding_registers(self.reference, self.size, self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.registers
-                        else:
-                            failed = True
-                    if self.functioncode == 1:
-                        result = master.read_coils(self.reference, self.size, self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.bits
-                        else:
-                            failed = True
-
-                    if self.functioncode == 2:
-                        result = master.read_discrete_inputs(self.reference, self.size, self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.bits
-                        else:
-                            failed = True
-                    if self.functioncode == 4:
-                        result = master.read_input_registers(self.reference, self.size, self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.registers
-                        else:
-                            failed = True
-                    if not failed:
-                        if verbosity>=4:
-                            print("Read MODBUS, FC:"+str(self.functioncode)+", DataType:"+str(self.dataType)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
-                            print("Read MODBUS, DATA:"+str(data))
-                        for ref in self.readableReferences:
-                            val = data[ref.relativeReference:(ref.regAmount+ref.relativeReference)]
-                            ref.checkPublish(val)
+            failed = False
+            try:
+                if self.functioncode == 3:
+                    result = await master.read_holding_registers(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.registers
                     else:
-                        if verbosity>=1:
-                            print("Slave device "+str(self.slaveid)+" responded with error code:"+str(result).split(',', 3)[2].rstrip(')'))
-                except:
-                    failed = True
-                    if verbosity>=1:
-                        print("Error talking to slave device:"+str(self.slaveid)+" (connection timeout)")
-                self.failCount(failed)
-            else:
-                if master.connect():
-                    pass
-                    #if verbosity >= 1:
-                    #    print("MODBUS connected successfully")
-                    # unfortunately there is a bug in pymodbus that causes the master to signal a complete disconnect
-                    # even though only one device has caused an error. This has led to a flood of this success message for some users.
-                    # Atm. I have no real desire to fix this upstream...
+                        failed = True
+                if self.functioncode == 1:
+                    result = await master.read_coils(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.bits
+                    else:
+                        failed = True
+                if self.functioncode == 2:
+                    result = await master.read_discrete_inputs(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.bits
+                    else:
+                        failed = True
+                if self.functioncode == 4:
+                    result = await master.read_input_registers(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.registers
+                    else:
+                        failed = True
+                if not failed:
+                    if verbosity>=4:
+                        print("Read MODBUS, FC:"+str(self.functioncode)+", DataType:"+str(self.dataType)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
+                        print("Read MODBUS, DATA:"+str(data))
+                    for ref in self.readableReferences:
+                        val = data[ref.relativeReference:(ref.regAmount+ref.relativeReference)]
+                        ref.checkPublish(val)
                 else:
-                    for p in pollers:
-                        p.failed=True
-                        if p.failcounter<3:
-                            p.failcounter=3
-                        p.failCount(p.failed)
-                    if verbosity >= 1:
-                        print("MODBUS connection error (poller), trying again...")
+                    if verbosity>=1:
+                        print("Slave device "+str(self.slaveid)+" responded with error code:"+str(result).split(',', 3)[2].rstrip(')'))
+            except:
+                failed = True
+                if verbosity>=1:
+                    print("Error talking to slave device:"+str(self.slaveid)+" (connection timeout)")
+            self.failCount(failed)
 
-    def checkPoll(self):
+    async def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
-            self.poll()
+            await self.poll()
             self.next_due=time.clock_gettime(0)+self.rate
 
     def addReference(self,myRef):
@@ -267,247 +254,6 @@ class Poller:
         else:
             print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
-def dataTypes(self,conf):
-    if conf is None or conf == "uint16" or conf == "":
-        self.regAmount=1
-        self.parse=parseuint16
-        self.combine=combineuint16
-    elif conf.startswith("list-uint16-"):
-        try:
-            length = int(conf[12:15])
-        except:
-            length = 1
-        if length > 50:
-            print("Data type list-uint16: length too long")
-            length = 50
-        self.parse=parseListUint16
-        self.combine=combineListUint16
-        self.regAmount=length
-    elif conf.startswith("string"):
-        try:
-            length = int(conf[6:9])
-        except:
-            length = 2
-        if length > 100:
-            print("Data type string: length too long")
-            length = 100
-        if  math.fmod(length,2) != 0:
-            length=length-1
-            print("Data type string: length must be divisible by 2")
-        self.parse=parseString
-        self.combine=combineString
-        self.stringLength=length
-        self.regAmount=int(length/2)
-    elif conf == "int32LE":
-        self.parse=parseint32LE
-        self.combine=combineint32LE
-        self.regAmount=2
-    elif conf == "int32BE":
-        self.regAmount=2
-        self.parse=parseint32BE
-        self.combine=combineint32BE
-    elif conf == "int16":
-        self.regAmount=1
-        self.parse=parseint16
-        self.combine=combineint16
-    elif conf == "uint32LE":
-        self.regAmount=2
-        self.parse=parseuint32LE
-        self.combine=combineuint32LE
-    elif conf == "uint32BE":
-        self.regAmount=2
-        self.parse=parseuint32BE
-        self.combine=combineuint32BE
-    elif conf == "bool":
-        self.regAmount=1
-        self.parse=parsebool
-        self.combine=combinebool
-    elif conf == "float32LE":
-        self.regAmount=2
-        self.parse=parsefloat32LE
-        self.combine=combinefloat32LE
-    elif conf == "float32BE":
-       self.regAmount=2
-       self.parse=parsefloat32BE
-       self.combine=combinefloat32BE
-
-def parsebool(self,payload):
-    if payload == 'True' or payload == 'true' or payload == '1' or payload == 'TRUE':
-        value = True
-    elif payload == 'False' or payload == 'false' or payload == '0' or payload == 'FALSE':
-        value = False
-    else:
-        value = None
-    return value
-
-def combinebool(self,val):
-    try:
-        len(val)
-        return bool(val[0])
-    except:
-        return bool(val)
-
-def parseListUint16(self,msg):
-    out=[]
-    try:
-        msg=msg.rstrip()
-        msg=msg.lstrip()
-        msg=msg.split(" ")
-        if len(msg) != self.regAmount:
-            return None
-        for x in range(0, len(msg)):
-            out.append(int(msg[x]))
-    except:
-        return None
-    return out
-
-def combineListUint16(self,val):
-    out=""
-    for x in val:
-        out+=str(x)+" "
-    return out
-
-def parseString(self,msg):
-    out=[]
-    if len(msg)<=self.stringLength:
-        for x in range(1,len(msg)+1):
-            if math.fmod(x,2)>0:
-                out.append(ord(msg[x-1])<<8)
-            else:
-                pass
-                out[int(x/2-1)]+=ord(msg[x-1])
-    else:
-        out = None
-    return out
-def combineString(self,val):
-    out=""
-    for x in val:
-        out+=chr(x>>8)
-        out+=chr(x&0x00FF)
-    return out
-
-def parseint16(self,msg):
-    try:
-        value=int(msg)
-        if value > 32767 or value < -32768:
-            out = None
-        else:
-            out = value&0xFFFF
-    except:
-        out=None
-    return out
-def combineint16(self,val):
-    try:
-        len(val)
-        myval=val[0]
-    except:
-        myval=val
-
-    if (myval & 0x8000) > 0:
-        out = -((~myval & 0x7FFF)+1)
-    else:
-        out = myval
-    return out
-
-def parseuint32LE(self,msg):
-    try:
-        value=int(msg)
-        if value > 4294967295 or value < 0:
-            out = None
-        else:
-            out=[int(value>>16),int(value&0x0000FFFF)]
-    except:
-        out=None
-    return out
-def combineuint32LE(self,val):
-    out = val[0]*65536 + val[1]
-    return out
-
-def parseuint32BE(self,msg):
-    try:
-        value=int(msg)
-        if value > 4294967295 or value < 0:
-            out = None
-        else:
-            out=[int(value&0x0000FFFF),int(value>>16)]
-    except:
-        out=None
-    return out
-def combineuint32BE(self,val):
-    out = val[0] + val[1]*65536
-    return out
-
-def parseint32LE(self,msg):
-    #try:
-    #    value=int(msg)
-    #    value = int.from_bytes(value.to_bytes(4, 'little', signed=False), 'little', signed=True)
-    #except:
-    #    out=None
-    #return out
-    return None
-def combineint32LE(self,val):
-    out = val[0]*65536 + val[1]
-    out = int.from_bytes(out.to_bytes(4, 'little', signed=False), 'little', signed=True)
-    return out
-
-def parseint32BE(self,msg):
-    #try:
-    #    value=int(msg)
-    #    value = int.from_bytes(value.to_bytes(4, 'big', signed=False), 'big', signed=True)
-    #except:
-    #    out=None
-    #return out
-    return None
-def combineint32BE(self,val):
-    out = val[0] + val[1]*65536
-    out = int.from_bytes(out.to_bytes(4, 'big', signed=False), 'big', signed=True)
-    return out
-
-def parseuint16(self,msg):
-    try:
-        value=int(msg)
-        if value > 65535 or value < 0:
-            value = None
-    except:
-        value=None
-    return value
-def combineuint16(self,val):
-    try:
-        len(val)
-        return val[0]
-    except:
-        return val
-
-def parsefloat32LE(self,msg):
-    try:
-        out=None
-        #value=int(msg)
-        #if value > 4294967295 or value < 0:
-        #    out = None
-        #else:
-        #    out=[int(value&0x0000FFFF),int(value>>16)]
-    except:
-        out=None
-    return out
-def combinefloat32LE(self,val):
-    out = str(struct.unpack('=f', struct.pack('=I',int(val[0])<<16|int(val[1])))[0])
-    return out
-
-def parsefloat32BE(self,msg):
-    try:
-        out=None
-        #value=int(msg)
-        #if value > 4294967295 or value < 0:
-        #    out = None
-        #else:
-        #    out=[int(value&0x0000FFFF),int(value>>16)]
-    except:
-        out=None
-    return out
-def combinefloat32BE(self,val):
-    out = str(struct.unpack('=f', struct.pack('=I',int(val[1])<<16|int(val[0])))[0])
-    return out
-
 class Reference:
     def __init__(self,topic,reference,dtype,rw,poller,scaling):
         self.topic=topic
@@ -529,12 +275,12 @@ class Reference:
         self.device=None
         self.poller=poller
         if self.poller.functioncode == 1:
-            dataTypes(self,"bool")
+            DataTypes.parseDataType(self,"bool")
             
         elif self.poller.functioncode == 2:
-            dataTypes(self,"bool")
+            DataTypes.parseDataType(self,"bool")
         else:
-            dataTypes(self,dtype)
+            DataTypes.parseDataType(self,dtype)
 
     def checkSanity(self,reference,size):
         if self.reference in range(reference,size+reference) and self.reference+self.regAmount-1 in range(reference,size+reference):
@@ -557,8 +303,8 @@ class Reference:
                 except:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
-        
-def messagehandler(mqc,userdata,msg):
+
+async def writehandler(userdata,msg):
     if str(msg.topic) == globaltopic+"reset-autoremove":
         if not args.autoremove and verbosity>=1:
             print("ERROR: Received autoremove-reset command but autoremove is not enabled. Check flags.")
@@ -594,12 +340,12 @@ def messagehandler(mqc,userdata,msg):
     if myRef.writefunctioncode == 5:
         value = myRef.parse(myRef,str(payload))
         if value != None:
-                result = master.write_coil(int(myRef.reference),value,int(myRef.device.slaveid))
+                result = await master.write_coil(int(myRef.reference),value,slave=int(myRef.device.slaveid))
                 try:
                     if result.function_code < 0x80:
                         myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
                         if verbosity>=3:
-                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                            print("Writing coils values to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" successful.")
                     else:
                         if verbosity>=1:
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode"+str(result).split(',', 3)[2].rstrip(')')+". Maybe bad configuration?)")
@@ -615,21 +361,19 @@ def messagehandler(mqc,userdata,msg):
     if myRef.writefunctioncode == 6:
         value = myRef.parse(myRef,str(payload))
         if value is not None:
-            #if myRef.scale: # reverse scale if required
-            #    value = type(value)(value / myRef.scale)
             try:
                 valLen=len(value)
             except:
                 valLen=1
-            if valLen>1:
-                result = master.write_registers(int(myRef.reference),value,myRef.device.slaveid)
+            if valLen>1 or args.avoid_fc6:
+                result = await master.write_registers(int(myRef.reference),value,slave=myRef.device.slaveid)
             else:
-                result = master.write_register(int(myRef.reference),value,myRef.device.slaveid)
+                result = await master.write_register(int(myRef.reference),value,slave=myRef.device.slaveid)
             try:
                 if result.function_code < 0x80:
                     myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
                     if verbosity>=3:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                        print("Writing register value(s) to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                 else:
                     if verbosity>=1:
                         print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode"+str(result).split(',', 3)[2].rstrip(')')+". Maybe bad configuration?)")
@@ -639,7 +383,10 @@ def messagehandler(mqc,userdata,msg):
         else:
             if verbosity >= 1:
                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Value does not fulfill criteria.")
-        
+
+def messagehandler(mqc,userdata,msg):
+    writeQueue.put((userdata, msg))
+
 def connecthandler(mqc,userdata,flags,rc):
     if rc == 0:
         mqc.initial_connection_made = True
@@ -674,7 +421,7 @@ def loghandler(mgc, userdata, level, buf):
     if verbosity >= 4:
         print("MQTT LOG:" + buf)
 
-def main():
+async def main():
     global parser
     global args
     global verbosity 
@@ -704,18 +451,17 @@ def main():
     parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times. Removed pollers can be reactivated by sending "True" or "1" to topic modbus/reset-autoremove')
     parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
     parser.add_argument('--always-publish',action='store_true',help='Always publish values, even if they did not change.')
-    parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
+    parser.add_argument('--set-loop-break',default=None,type=float, help='Set pause in main polling loop. Defaults to 10ms.')
     parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
- 
+    parser.add_argument('--avoid-fc6',action='store_true', help='If set, use function code 16 (write multiple registers) even when just writing a single register')
     control = Control()
     signal.signal(signal.SIGINT, signal_handler)
 
     args=parser.parse_args()
     verbosity=args.verbosity
     loopBreak=args.set_loop_break
-    if loopBreak == 0:
-        loopBreak = 0.01
-        print("ERROR: Loop break must not be 0! Using default value (0.01) instead.")
+    if loopBreak is not None:
+        print("Info: loop-break option has been removed, please remove from your options.")
     addToHass=False
     addToHass=args.add_to_homeassistant
     
@@ -797,10 +543,10 @@ def main():
                 parity = "O"
         if args.rtu_parity == "even":
                 parity = "E"
-        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
+        master = AsyncModbusSerialClient(port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
     
     elif args.tcp:
-        master = TCPModbusClient(args.tcp, args.tcp_port,client_id="modbus2mqtt", clean_session=False)
+        master = AsyncModbusTcpClient(args.tcp, port=args.tcp_port,client_id="modbus2mqtt", clean_session=False)
     else:
         print("You must specify a modbus access method, either --rtu or --tcp")
         sys.exit(1)
@@ -859,9 +605,11 @@ def main():
     #Main Loop
     modbus_connected = False
     while control.runLoop:
+        time.sleep(0.001)
         if not modbus_connected:
             print("Connecting to MODBUS...")
-            modbus_connected = master.connect()
+            await master.connect()
+            modbus_connected = master.connected
             if modbus_connected:
                 if verbosity >= 2:
                     print("MODBUS connected successfully")
@@ -893,30 +641,32 @@ def main():
         if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
             if modbus_connected:
                 try:
+                    if not writeQueue.empty():
+                        writeObj = writeQueue.get(False)
+                        await writehandler(writeObj[0],writeObj[1])
+
                     for p in pollers:
-                        p.checkPoll()
+                        await p.checkPoll()
     
                     for d in deviceList:
                         d.publishDiagnostics()
                     anyAct=False
+
                     for p in pollers:
                         if p.disabled is not True:
                             anyAct=True
+
                     if not anyAct:
-                        time.sleep(5)
+                        time.sleep(0.010)
                         for p in pollers:
                             if p.disabled == True:
                                 p.disabled = False
                                 p.failcounter = 0
                                 if verbosity>=1:
                                     print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
-    
                 except:
                     if verbosity>=1:
                         print("Exception Error when polling or publishing, trying again...")
-    
-        time.sleep(loopBreak)
-    
-    master.close()
+    await master.close()
     #adder.removeAll(referenceList)
     sys.exit(1)
