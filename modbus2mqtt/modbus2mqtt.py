@@ -39,21 +39,23 @@ import random
 import ssl
 import math
 import struct
+import queue
 
 from .addToHomeAssistant import HassConnector
 from .dataTypes import DataTypes
 
-from pymodbus.pdu import ModbusRequest
+import pymodbus
+import asyncio
 
-try: # little hack to fix incompatibility with pymodbus version 3. Will deprecate older versions one day.. 
-    from pymodbus.client.sync import ModbusSerialClient as SerialModbusClient
-    from pymodbus.client.sync import ModbusTcpClient as TCPModbusClient
-except:
-    from pymodbus.client import ModbusSerialClient as SerialModbusClient
-    from pymodbus.client import ModbusTcpClient as TCPModbusClient 
-from pymodbus.transaction import ModbusRtuFramer
+from pymodbus.client import (
+    AsyncModbusSerialClient,
+    AsyncModbusTcpClient,
+    AsyncModbusTlsClient,
+    AsyncModbusUdpClient,
+)
+from pymodbus.exceptions import ModbusIOException
 
-__version__ = "0.66"
+__version__ = "0.67"
 mqtt_port = None
 mqc = None
 parser = None
@@ -67,6 +69,8 @@ deviceList = []
 referenceList = []
 master = None
 control = None
+
+writeQueue = queue.SimpleQueue()
 
 class Control:
     def __init__(self):
@@ -167,71 +171,53 @@ class Poller:
                 if self.failcounter<3:
                     self.failcounter+=1
 
-    def poll(self):
+    async def poll(self):
             result = None
-            if master.is_socket_open()==True:
-                failed = False
-                try:
-                    if self.functioncode == 3:
-                        result = master.read_holding_registers(self.reference, self.size, slave=self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.registers
-                        else:
-                            failed = True
-                    if self.functioncode == 1:
-                        result = master.read_coils(self.reference, self.size, slave=self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.bits
-                        else:
-                            failed = True
-
-                    if self.functioncode == 2:
-                        result = master.read_discrete_inputs(self.reference, self.size, slave=self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.bits
-                        else:
-                            failed = True
-                    if self.functioncode == 4:
-                        result = master.read_input_registers(self.reference, self.size, slave=self.slaveid)
-                        if result.function_code < 0x80:
-                            data = result.registers
-                        else:
-                            failed = True
-                    if not failed:
-                        if verbosity>=4:
-                            print("Read MODBUS, FC:"+str(self.functioncode)+", DataType:"+str(self.dataType)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
-                            print("Read MODBUS, DATA:"+str(data))
-                        for ref in self.readableReferences:
-                            val = data[ref.relativeReference:(ref.regAmount+ref.relativeReference)]
-                            ref.checkPublish(val)
+            failed = False
+            try:
+                if self.functioncode == 3:
+                    result = await master.read_holding_registers(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.registers
                     else:
-                        if verbosity>=1:
-                            print("Slave device "+str(self.slaveid)+" responded with error code:"+str(result).split(',', 3)[2].rstrip(')'))
-                except:
-                    failed = True
-                    if verbosity>=1:
-                        print("Error talking to slave device:"+str(self.slaveid)+" (connection timeout)")
-                self.failCount(failed)
-            else:
-                if master.connect():
-                    pass
-                    #if verbosity >= 1:
-                    #    print("MODBUS connected successfully")
-                    # unfortunately there is a bug in pymodbus that causes the master to signal a complete disconnect
-                    # even though only one device has caused an error. This has led to a flood of this success message for some users.
-                    # Atm. I have no real desire to fix this upstream...
+                        failed = True
+                if self.functioncode == 1:
+                    result = await master.read_coils(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.bits
+                    else:
+                        failed = True
+                if self.functioncode == 2:
+                    result = await master.read_discrete_inputs(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.bits
+                    else:
+                        failed = True
+                if self.functioncode == 4:
+                    result = await master.read_input_registers(self.reference, self.size, slave=self.slaveid)
+                    if result.function_code < 0x80:
+                        data = result.registers
+                    else:
+                        failed = True
+                if not failed:
+                    if verbosity>=4:
+                        print("Read MODBUS, FC:"+str(self.functioncode)+", DataType:"+str(self.dataType)+", ref:"+str(self.reference)+", Qty:"+str(self.size)+", SI:"+str(self.slaveid))
+                        print("Read MODBUS, DATA:"+str(data))
+                    for ref in self.readableReferences:
+                        val = data[ref.relativeReference:(ref.regAmount+ref.relativeReference)]
+                        ref.checkPublish(val)
                 else:
-                    for p in pollers:
-                        p.failed=True
-                        if p.failcounter<3:
-                            p.failcounter=3
-                        p.failCount(p.failed)
-                    if verbosity >= 1:
-                        print("MODBUS connection error (poller), trying again...")
+                    if verbosity>=1:
+                        print("Slave device "+str(self.slaveid)+" responded with error code:"+str(result).split(',', 3)[2].rstrip(')'))
+            except:
+                failed = True
+                if verbosity>=1:
+                    print("Error talking to slave device:"+str(self.slaveid)+" (connection timeout)")
+            self.failCount(failed)
 
-    def checkPoll(self):
+    async def checkPoll(self):
         if time.clock_gettime(0) >= self.next_due and not self.disabled:
-            self.poll()
+            await self.poll()
             self.next_due=time.clock_gettime(0)+self.rate
 
     def addReference(self,myRef):
@@ -317,8 +303,8 @@ class Reference:
                 except:
                     if verbosity>=1:
                         print("Error publishing MQTT topic: " + str(self.device.name+"/state/"+self.topic)+"value: " + str(self.lastval))
-        
-def messagehandler(mqc,userdata,msg):
+
+async def writehandler(userdata,msg):
     if str(msg.topic) == globaltopic+"reset-autoremove":
         if not args.autoremove and verbosity>=1:
             print("ERROR: Received autoremove-reset command but autoremove is not enabled. Check flags.")
@@ -354,7 +340,8 @@ def messagehandler(mqc,userdata,msg):
     if myRef.writefunctioncode == 5:
         value = myRef.parse(myRef,str(payload))
         if value != None:
-                result = master.write_coil(int(myRef.reference),value,slave=int(myRef.device.slaveid))
+                asyncio.run(writehandler(functioncode, int(ref), value, int(slaveid)), debug=False)
+                result = await master.write_coil(int(myRef.reference),value,slave=int(myRef.device.slaveid))
                 try:
                     if result.function_code < 0x80:
                         myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
@@ -382,9 +369,9 @@ def messagehandler(mqc,userdata,msg):
             except:
                 valLen=1
             if valLen>1:
-                result = master.write_registers(int(myRef.reference),value,slave=myRef.device.slaveid)
+                result = await master.write_registers(int(myRef.reference),value,slave=myRef.device.slaveid)
             else:
-                result = master.write_register(int(myRef.reference),value,slave=myRef.device.slaveid)
+                result = await master.write_register(int(myRef.reference),value,slave=myRef.device.slaveid)
             try:
                 if result.function_code < 0x80:
                     myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
@@ -399,7 +386,11 @@ def messagehandler(mqc,userdata,msg):
         else:
             if verbosity >= 1:
                 print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" not possible. Value does not fulfill criteria.")
-        
+
+def messagehandler(mqc,userdata,msg):
+    writeQueue.put((userdata, msg))
+    #asyncio.run(writehandler(mqc,userdata,msg))
+
 def connecthandler(mqc,userdata,flags,rc):
     if rc == 0:
         mqc.initial_connection_made = True
@@ -434,7 +425,7 @@ def loghandler(mgc, userdata, level, buf):
     if verbosity >= 4:
         print("MQTT LOG:" + buf)
 
-def main():
+async def main():
     global parser
     global args
     global verbosity 
@@ -464,7 +455,7 @@ def main():
     parser.add_argument('--autoremove',action='store_true',help='Automatically remove poller if modbus communication has failed three times. Removed pollers can be reactivated by sending "True" or "1" to topic modbus/reset-autoremove')
     parser.add_argument('--add-to-homeassistant',action='store_true',help='Add devices to Home Assistant using Home Assistant\'s MQTT-Discovery')
     parser.add_argument('--always-publish',action='store_true',help='Always publish values, even if they did not change.')
-    parser.add_argument('--set-loop-break',default='0.01',type=float, help='Set pause in main polling loop. Defaults to 10ms.')
+    parser.add_argument('--set-loop-break',default=None,type=float, help='Set pause in main polling loop. Defaults to 10ms.')
     parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
  
     control = Control()
@@ -473,9 +464,8 @@ def main():
     args=parser.parse_args()
     verbosity=args.verbosity
     loopBreak=args.set_loop_break
-    if loopBreak == 0:
-        loopBreak = 0.01
-        print("ERROR: Loop break must not be 0! Using default value (0.01) instead.")
+    if loopBreak is not None:
+        print("Info: loop-break option has been removed, please remove from your options.")
     addToHass=False
     addToHass=args.add_to_homeassistant
     
@@ -557,10 +547,10 @@ def main():
                 parity = "O"
         if args.rtu_parity == "even":
                 parity = "E"
-        master = SerialModbusClient(method="rtu", port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
+        master = AsyncModbusSerialClient(port=args.rtu, stopbits = 1, bytesize = 8, parity = parity, baudrate = int(args.rtu_baud), timeout=args.set_modbus_timeout)
     
     elif args.tcp:
-        master = TCPModbusClient(args.tcp, args.tcp_port,client_id="modbus2mqtt", clean_session=False)
+        master = AsyncModbusTcpClient(args.tcp, port=args.tcp_port,client_id="modbus2mqtt", clean_session=False)
     else:
         print("You must specify a modbus access method, either --rtu or --tcp")
         sys.exit(1)
@@ -621,7 +611,8 @@ def main():
     while control.runLoop:
         if not modbus_connected:
             print("Connecting to MODBUS...")
-            modbus_connected = master.connect()
+            await master.connect()
+            modbus_connected = master.connected
             if modbus_connected:
                 if verbosity >= 2:
                     print("MODBUS connected successfully")
@@ -653,30 +644,32 @@ def main():
         if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
             if modbus_connected:
                 try:
+                    if not writeQueue.empty():
+                        writeObj = writeQueue.get(False)
+                        await writehandler(writeObj[0],writeObj[1])
+
                     for p in pollers:
-                        p.checkPoll()
+                        await p.checkPoll()
     
                     for d in deviceList:
                         d.publishDiagnostics()
                     anyAct=False
+
                     for p in pollers:
                         if p.disabled is not True:
                             anyAct=True
+
                     if not anyAct:
-                        time.sleep(5)
+                        time.sleep(0.010)
                         for p in pollers:
                             if p.disabled == True:
                                 p.disabled = False
                                 p.failcounter = 0
                                 if verbosity>=1:
                                     print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
-    
                 except:
                     if verbosity>=1:
                         print("Exception Error when polling or publishing, trying again...")
-    
-        time.sleep(loopBreak)
-    
-    master.close()
+    await master.close()
     #adder.removeAll(referenceList)
     sys.exit(1)
