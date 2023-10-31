@@ -55,7 +55,7 @@ from pymodbus.client import (
 )
 from pymodbus.exceptions import ModbusIOException
 
-__version__ = "0.67"
+__version__ = "0.68"
 mqtt_port = None
 mqc = None
 parser = None
