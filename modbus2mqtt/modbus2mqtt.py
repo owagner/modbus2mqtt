@@ -340,13 +340,12 @@ async def writehandler(userdata,msg):
     if myRef.writefunctioncode == 5:
         value = myRef.parse(myRef,str(payload))
         if value != None:
-                asyncio.run(writehandler(functioncode, int(ref), value, int(slaveid)), debug=False)
                 result = await master.write_coil(int(myRef.reference),value,slave=int(myRef.device.slaveid))
                 try:
                     if result.function_code < 0x80:
                         myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
                         if verbosity>=3:
-                            print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                            print("Writing coils values to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" successful.")
                     else:
                         if verbosity>=1:
                             print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode"+str(result).split(',', 3)[2].rstrip(')')+". Maybe bad configuration?)")
@@ -362,13 +361,11 @@ async def writehandler(userdata,msg):
     if myRef.writefunctioncode == 6:
         value = myRef.parse(myRef,str(payload))
         if value is not None:
-            #if myRef.scale: # reverse scale if required
-            #    value = type(value)(value / myRef.scale)
             try:
                 valLen=len(value)
             except:
                 valLen=1
-            if valLen>1:
+            if valLen>1 or args.avoid_fc6:
                 result = await master.write_registers(int(myRef.reference),value,slave=myRef.device.slaveid)
             else:
                 result = await master.write_register(int(myRef.reference),value,slave=myRef.device.slaveid)
@@ -376,7 +373,7 @@ async def writehandler(userdata,msg):
                 if result.function_code < 0x80:
                     myRef.checkPublish(value) # writing was successful => we can assume, that the corresponding state can be set and published
                     if verbosity>=3:
-                        print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
+                        print("Writing register value(s) to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" successful.")
                 else:
                     if verbosity>=1:
                         print("Writing to device "+str(myDevice.name)+", Slave-ID="+str(myDevice.slaveid)+" at Reference="+str(myRef.reference)+" using function code "+str(myRef.writefunctioncode)+" FAILED! (Devices responded with errorcode"+str(result).split(',', 3)[2].rstrip(')')+". Maybe bad configuration?)")
@@ -389,7 +386,6 @@ async def writehandler(userdata,msg):
 
 def messagehandler(mqc,userdata,msg):
     writeQueue.put((userdata, msg))
-    #asyncio.run(writehandler(mqc,userdata,msg))
 
 def connecthandler(mqc,userdata,flags,rc):
     if rc == 0:
@@ -457,7 +453,7 @@ async def main():
     parser.add_argument('--always-publish',action='store_true',help='Always publish values, even if they did not change.')
     parser.add_argument('--set-loop-break',default=None,type=float, help='Set pause in main polling loop. Defaults to 10ms.')
     parser.add_argument('--diagnostics-rate',default='0',type=int, help='Time in seconds after which for each device diagnostics are published via mqtt. Set to sth. like 600 (= every 10 minutes) or so.')
- 
+    parser.add_argument('--avoid-fc6',action='store_true', help='If set, use function code 16 (write multiple registers) even when just writing a single register')
     control = Control()
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -609,6 +605,7 @@ async def main():
     #Main Loop
     modbus_connected = False
     while control.runLoop:
+        time.sleep(0.001)
         if not modbus_connected:
             print("Connecting to MODBUS...")
             await master.connect()
