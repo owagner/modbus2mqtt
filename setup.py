@@ -21,6 +21,7 @@ setup(
     install_requires=[
           'paho-mqtt',
           'pymodbus',
+          'serial',
     ],
     entry_points = {
         "console_scripts": ['modbus2mqtt = modbus2mqtt.modbus2mqtt:main']

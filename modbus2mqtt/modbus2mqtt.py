@@ -421,7 +421,10 @@ def loghandler(mgc, userdata, level, buf):
     if verbosity >= 4:
         print("MQTT LOG:" + buf)
 
-async def main():
+def main():
+    asyncio.run(async_main(), debug=False)
+
+async def async_main():
     global parser
     global args
     global verbosity 
