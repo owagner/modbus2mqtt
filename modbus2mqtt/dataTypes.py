@@ -158,11 +158,42 @@ class DataTypes:
     def combinefloat32BE(refobj,val):
         out = str(struct.unpack('=f', struct.pack('=I',int(val[1])<<16|int(val[0])))[0])
         return out
+
+    def parseListUint16(refobj,msg):
+        out=[]
+        try:
+            msg=msg.rstrip()
+            msg=msg.lstrip()
+            msg=msg.split(" ")
+            if len(msg) != refobj.regAmount:
+                return None
+            for x in range(0, len(msg)):
+                out.append(int(msg[x]))
+        except:
+            return None
+        return out
+    def combineListUint16(refobj,val):
+        out=""
+        for x in val:
+            out+=str(x)+" "
+        return out
+
     def parseDataType(refobj,conf):
         if conf is None or conf == "uint16" or conf == "":
             refobj.regAmount=1
             refobj.parse=DataTypes.parseuint16
             refobj.combine=DataTypes.combineuint16
+        elif conf.startswith("list-uint16-"):
+            try:
+                length = int(conf[12:15])
+            except:
+                length = 1
+            if length > 50:
+                print("Data type list-uint16: length too long")
+                length = 50
+            refobj.parse=DataTypes.parseListUint16
+            refobj.combine=DataTypes.combineListUint16
+            refobj.regAmount=length
         elif conf.startswith("string"):
             try:
                 length = int(conf[6:9])
