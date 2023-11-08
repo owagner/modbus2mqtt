@@ -55,7 +55,7 @@ from pymodbus.client import (
 )
 from pymodbus.exceptions import ModbusIOException
 
-__version__ = "0.69"
+__version__ = "0.70"
 mqtt_port = None
 mqc = None
 parser = None
@@ -175,6 +175,7 @@ class Poller:
             result = None
             failed = False
             try:
+                time.sleep(0.002)
                 if self.functioncode == 3:
                     result = await master.read_holding_registers(self.reference, self.size, slave=self.slaveid)
                     if result.function_code < 0x80:
@@ -337,6 +338,7 @@ async def writehandler(userdata,msg):
     if myRef == None: # no such reference
         return    
     payload = str(msg.payload.decode("utf-8"))
+    time.sleep(0.002)
     if myRef.writefunctioncode == 5:
         value = myRef.parse(myRef,str(payload))
         if value != None:
@@ -607,8 +609,8 @@ async def async_main():
     
     #Main Loop
     modbus_connected = False
+    current_poller = 0
     while control.runLoop:
-        time.sleep(0.001)
         if not modbus_connected:
             print("Connecting to MODBUS...")
             await master.connect()
@@ -644,12 +646,14 @@ async def async_main():
         if mqc.initial_connection_made: #Don't start polling unless the initial connection to MQTT has been made, no offline MQTT storage will be available until then.
             if modbus_connected:
                 try:
+                    if len(pollers) > 0:
+                        await pollers[current_poller].checkPoll()
+                        current_poller = current_poller + 1
+                        if current_poller == len(pollers):
+                            current_poller=0
                     if not writeQueue.empty():
                         writeObj = writeQueue.get(False)
                         await writehandler(writeObj[0],writeObj[1])
-
-                    for p in pollers:
-                        await p.checkPoll()
     
                     for d in deviceList:
                         d.publishDiagnostics()
