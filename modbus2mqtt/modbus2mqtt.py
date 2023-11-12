@@ -210,10 +210,10 @@ class Poller:
                 else:
                     if verbosity>=1:
                         print("Slave device "+str(self.slaveid)+" responded with error code:"+str(result).split(',', 3)[2].rstrip(')'))
-            except:
+            except Exception as e:
                 failed = True
                 if verbosity>=1:
-                    print("Error talking to slave device:"+str(self.slaveid)+" (connection timeout)")
+                    print("Error talking to slave device:"+str(self.slaveid)+" ("+str(e)+")")
             self.failCount(failed)
 
     async def checkPoll(self):
@@ -465,8 +465,8 @@ async def async_main():
     args=parser.parse_args()
     verbosity=args.verbosity
     loopBreak=args.set_loop_break
-    if loopBreak is not None:
-        print("Info: loop-break option has been removed, please remove from your options.")
+    if loopBreak is None:
+        loopBreak=0.01
     addToHass=False
     addToHass=args.add_to_homeassistant
     
@@ -611,6 +611,8 @@ async def async_main():
     modbus_connected = False
     current_poller = 0
     while control.runLoop:
+        time.sleep(loopBreak)
+        modbus_connected = master.connected
         if not modbus_connected:
             print("Connecting to MODBUS...")
             await master.connect()
@@ -626,6 +628,7 @@ async def async_main():
                     p.failCount(p.failed)
                 if verbosity >= 1:
                     print("MODBUS connection error (mainLoop), trying again...")
+                time.sleep(0.5)
     
         if not mqc.initial_connection_attempted:
            try:
@@ -671,9 +674,9 @@ async def async_main():
                                 p.failcounter = 0
                                 if verbosity>=1:
                                     print("Reactivated poller "+p.topic+" with Slave-ID "+str(p.slaveid)+ " and functioncode "+str(p.functioncode)+".")
-                except:
+                except Exception as e:
                     if verbosity>=1:
-                        print("Exception Error when polling or publishing, trying again...")
+                        print("Error: "+str(e)+" when polling or publishing, trying again...")
     await master.close()
     #adder.removeAll(referenceList)
     sys.exit(1)
