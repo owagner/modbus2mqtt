@@ -1,136 +1,195 @@
-modbus2mqtt
-===========
+spicierModbus2mqtt
+==================
 
-  Written and (C) 2015 Oliver Wagner <owagner@tellerulam.com> 
+
+Written and (C) 2018 Max Brueggemann <mail@maxbrueggemann.de> 
+
+Contains code from modbus2mqtt, written and (C) 2015 Oliver Wagner <owagner@tellerulam.com>
   
-  Provided under the terms of the MIT license.
+Provided under the terms of the MIT license.
 
 
 Overview
 --------
-modbus2mqtt is a Modbus master which continously polls slaves and publishes
-register values via MQTT.
+spicierModbus2mqtt is a Modbus master which continuously polls slaves and publishes
+values via MQTT.
 
-It is intended as a building block in heterogenous smart home environments where 
+It is intended as a building block in heterogeneous smart home environments where 
 an MQTT message broker is used as the centralized message bus.
-See https://github.com/mqtt-smarthome for a rationale and architectural overview.
-
-
-Dependencies
-------------
-* Eclipse Paho for Python - http://www.eclipse.org/paho/clients/python/
-* modbus-tk for Modbus communication - https://github.com/ljean/modbus-tk/
-
-
-Command line options
---------------------
-    usage: modbus2mqtt.py [-h] [--mqtt-host MQTT_HOST] [--mqtt-port MQTT_PORT]
-                          [--mqtt-topic MQTT_TOPIC] [--rtu RTU]
-                          [--rtu-baud RTU_BAUD] [--rtu-parity {even,odd,none}]
-                          --registers REGISTERS [--log LOG] [--syslog]
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      --mqtt-host MQTT_HOST
-                            MQTT server address. Defaults to "localhost"
-      --mqtt-port MQTT_PORT
-                            MQTT server port. Defaults to 1883
-      --mqtt-topic MQTT_TOPIC
-                            Topic prefix to be used for subscribing/publishing.
-                            Defaults to "modbus/"
-      --clientid MQTT_CLIENT_ID
-                            optional prefix for MQTT Client ID
-
-      --rtu RTU             pyserial URL (or port name) for RTU serial port
-      --rtu-baud RTU_BAUD   Baud rate for serial port. Defaults to 19200
-      --rtu-parity {even,odd,none}
-                            Parity for serial port. Defaults to even.
-      --registers REGISTERS
-                            Register specification file. Must be specified
-      --force FORCE	    
-                            optional interval (secs) to publish existing values
-                            does not override a register's poll interval.
-                            Defaults to 0 (publish only on change).
-				
-      --log LOG             set log level to the specified value. Defaults to
-                            WARNING. Try DEBUG for maximum detail
-      --syslog              enable logging to syslog
-
-      
-Register definition
--------------------
-The Modbus registers which are to be polled are defined in a CSV file with
-the following columns:
-
-* *Topic suffix*
-  The topic where the respective register will be published into. Will
-  be prefixed with the global topic prefix and "status/".
-* *Register offset*
-  The register number, depending on the function code. Zero-based.
-* *Size (in words)*
-  The register size in words.
-* *Format*
-  The format how to interpret the register value. This can be two parts, split
-  by a ":" character.
-  The first part uses the Python
-  "struct" module notation. Common examples:
-    - >H unsigned short
-    - >f float
-  
-  The second part is optional and specifies a Python format string, e.g.
-      %.2f
-  to format the value to two decimal digits.
-* *Polling frequency*
-    How often the register is to be polled, in seconds. Only integers.
-* *SlaveID*
-    The Modbus address of the slave to query. Defaults to 1.
-* *FunctionCode*
-  The Modbus function code to use for querying the register. Defaults
-  to 4 (READ REGISTER). Only change if you know what you are doing.
-
-Not all columns need to be specified. Unspecified columns take their
-default values. The default values for subsequent rows can be set
-by specifying a magic topic suffix of *DEFAULT*
-
-Topics
-------
-Values are published as simple strings to topics with the general <prefix>,
-the function code "/status/" and the topic suffix specified per register.
-A value will only be published if it's textual representation has changed,
-e.g. _after_ formatting has been applied. The published MQTT messages have
-the retain flag set.
-
-A special topic "<prefix>/connected" is maintained. 
-It's a enum stating whether the module is currently running and connected to 
-the broker (1) and to the Modbus interface (2).
-
-Setting Modbus coils (FC=5) and registers (FC=6)
-------------------------------------------------
-
-modbus2mqtt subscibes to two topics:
-
-- prefix/set/+/5/+  # where the first + is the slaveId and the second is the register
-- prefix/set/+/6/+  # payload values are written the the devices (assumes 16bit Int)
-
-There is only limited sanity checking currently on the payload values.
-
 
 Changelog
 ---------
-* 0.4 - 2015/07/31 - nzfarmer
-  - added support for MQTT subscribe + Mobdus write
-    Topics are of the form: prefix/set/<slaveid (0:255)>/<fc (5,6)>/<register>  (payload = value to write)
-  - added CNTL-C for controlled exit
-  - added --clientid for MQTT connections
-  - added --force to repost register values regardless of change every x seconds where x >0
-	
-* 0.3 - 2015/05/26 - owagner
-  - support optional string format specification
-* 0.2 - 2015/05/26 - owagner
-  - added "--rtu-parity" option to set the parity for RTU serial communication. Defaults to "even",
-    to be inline with Modbus specification
-  - changed default for "--rtu-baud" to 19200, to be inline with Modbus specification
+- version 0.72, 12. of November 2023: add loop break option again due to user request, reconnect on modbus tcp connection loss and serial device not found
+- version 0.68, 31. of October 2023: use asyncio with pymodbus, add option to use function code 16 when writing single registers, remove loop break option
+- version 0.66, 29. of November 2022: print Modbus exceptions generated by devices
+- version 0.65, 25. of November 2022: fixed incompatibility with newer version of pymodbus, readjusted the Dockerfile
+- version 0.64, 16. of October 2022: Adjustment of the Dockerfile (enforcing pymodbus 2.5.3, otherwise it tries to use 3.0 and this failes); typo fixed; main-/poller-loop log entry
+- version 0.63, 04. of October 2022: added reading and writing of int32 values, fix regarding negative floats
+- version 0.62, 6. of February 2022: major refactoring, project is now python module available via pip
+- version 0.5, 21. of September 2019: print error messages in case of badly configured pollers
+- version 0.4, 25. of May 2019: When writing to a device, updated states are now published immediately, if writing was successful.
 
-* 0.1 - 2015/05/25 - owagner
-  - Initial version
-  
+Spicier?
+------------
+Main improvements over modbus2mqtt by Oliver Wagner:
+- more abstraction when writing to coils/registers using mqtt. Writing is now
+  possible without having to know slave id, reference, function code etc.
+- specific coils/registers can be made read only
+- multiple slave devices on one bus are now fully supported
+- polling speed has been increased significantly. With modbus RTU @ 38400 baud
+  more than 80 transactions per second have been achieved.
+- switched over to pymodbus which is in active development.
+- Improved error handling, the software will continuously retry when the network or device goes down.
+
+Feel free to contribute!
+
+
+Installation
+------------
+run `sudo pip3 install modbus2mqtt`
+
+Without installation
+--------------------
+Requirements:
+
+* python3
+* Eclipse Paho for Python - http://www.eclipse.org/paho/clients/python/
+* pymodbus - https://github.com/riptideio/pymodbus
+
+Installation of requirements:
+
+* Install python3 and python3-pip and python3-serial (on a Debian based system something like sudo apt install python3 python3-pip python3-serial will likely get you there)
+* run pip3 install pymodbus
+* run pip3 install paho-mqtt
+
+Usage
+-----
+If you've installed using pip:
+
+* example for rtu and mqtt broker on localhost: `modbus2mqtt --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv`
+* example for tcp slave and mqtt broker
+    on localhost: `modbus2mqtt --tcp localhost --config testing.csv`
+    remotely: `modbus2mqtt --tcp 192.168.1.7 --config example.csv --mqtt-host mqtt.eclipseprojects.io`
+
+
+If you haven't installed modbus2mqtt you can run modbus2mqtt.py from the root directory of this repo directly:
+
+* example for rtu and mqtt broker on localhost: `python3 modbus2mqtt.py --rtu /dev/ttyS0 --rtu-baud 38400 --rtu-parity none --mqtt-host localhost  --config testing.csv`
+* example for tcp slave and mqtt broker
+    on localhost: `python3 modbus2mqtt.py --tcp localhost --config testing.csv`
+    remotely:     `python3 modbus2mqtt.py --tcp 192.168.1.7 --config example.csv --mqtt-host mqtt.eclipseprojects.io`
+
+For docker support see below.
+     
+Configuration file
+-------------------
+THE FIRST LINE OF THE CONFIG FILE HAS TO BE:
+
+"type","topic","col2","col3","col4","col5","col6"
+
+The Modbus data which is to be polled is defined in a CSV file.
+There are two types of rows, each with different columns; a "Poller" object and a "Reference" object. In  the "Poller" object we define the type of the modbus data and how the request to the device should look like (which modbus references are to be read, for example: holding registers at references 0 to 10). With the reference object we define (among other things) to which topic the data of a certain data point (registers, coil..) is going to be published.
+Modbus references are as transmitted on the wire. In the traditional numbering scheme these would have been called offsets. E. g. to read 400020 you would use reference 20.
+Refer to the example.csv for more details.
+
+* Use "coils", for modbus functioncode 1 
+* Use "input status", for modbus functioncode 2
+* Use "holding registers", for modbus functioncode 3
+* Use "input registers", for modbus functioncode 4
+
+Reference objects link to the modbus reference address and define specific details about that register or bit.
+Pollers and references are used together like this:
+```
+poll,kitchen,7,0,5,coil,1.0
+ref,light0,0,rw
+ref,light1,1,rw
+ref,light2,2,rw
+ref,light3,3,rw
+ref,light4,4,rw
+```
+This will poll from Modbus slave id 7, starting at coil offset 0, for 5 coils, 1.0 times a second.
+
+The first coil 0 will then be sent as an MQTT message with topic modbus/kitchen/state/light0.
+
+The second coil 1 will then be sent as an MQTT message with topic modbus/kitchen/state/light1 and so on.
+
+
+Note that the reference addresses are absolute addresses and are NOT related to the start address of the poller! If you define a reference that is not within the pollers range you will get an error message.
+So another example:
+```
+poll,someTopic,1,2,11,coil,1.0
+ref,light9,9,rw
+```
+This will poll states of 11 coils from slave device 1 once a second, starting at coil 2.
+The state of coil 9 will be published to mqtt with the topic modbus/someTopic/state/light0
+if column 3 contains an 'r'.
+
+If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
+column 3 contains a 'w', the new state will be written to coil 9 of the slave device.
+
+
+Some other "interpretations" of register contents are also supported:
+```
+poll,garage,1,0,10,holding_register,2
+ref,counter1,0,rw,float32BE 
+ref,counter2,2,rw,uint16
+ref,somestring,3,rw,string6
+```
+This will poll 10 consecutive registers from Modbus slave id 1, starting at holding register 0.
+
+The last row now contains the data format. Supported values: float32BE, float32LE, uint32BE, uint32LE, uint16 (default), stringXXX with XXX being the string length in bytes.
+
+Note that a float32BE will of course span over two registers (0 and 1 in the above example) and that you can still define another reference object occupying the same registers. This might come in handy if you want to modify a small part of a string separately.
+
+
+Topics
+------
+Values are published as strings to topic:
+
+"prefix/poller topic/state/reference topic"
+
+A value will only be published if it's raw data has changed,
+e.g. _before_ any formatting has been applied. The published MQTT messages have
+the retain flag set.
+
+A special topic "prefix/connected" is maintained. 
+It states whether the module is currently running and connected to 
+the broker (1) and to the Modbus interface (2).
+
+We also maintain a "connected"-Topic for each poller (prefix/poller_topic/connected). This is useful when using Modbus RTU with multiple slave devices because a non-responsive device can be detected.
+
+For diagnostic purposes (mainly for Modbus via serial) the topics prefix/poller_topic/state/diagnostics_errors_percent and prefix/poller_topic/state/diagnostics_errors_total are available. This feature can be enabled by passing the argument "--diagnostics-rate X" with x being the amount of seconds between each recalculation and publishing of the error rate in percent and the amount of errors within the time frame X. Set X to something like 600 to get diagnostic messages every 10 minutes.
+
+Writing to Modbus coils and registers
+------------------------------------------------
+
+spiciermodbus2mqtt subscribes to:
+
+"prefix/poller topic/set/reference topic"
+
+
+If you want to write to a coil:
+
+mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "True"
+
+to a register:
+
+mosquitto_pub -h <mqtt broker> -t modbus/somePoller/set/someReference -m "12346"
+
+Scripts addToHomeAssistant.py and create-openhab-conf.py
+------------------------------------------------
+These scripts are not really part of this project, but I decided to include them anyway. They were written because I grew more and more frustrated with the Modbus capabilities of OpenHAB and Home Assistant.
+
+So what exactly do they do? Completely different things actually.
+
+* addToHomeAssistant.py can only be run within modbus2mqtt.py. It can be invoked by passing --add-to-homeassistant when running modbus2mqtt.py. It uses MQTT messages to add all the stuff from the .csv file to home assistant automatically. Just try it. I recommend using a non productive instance of Home Assistant for testing :-)
+
+
+* create-openhab-conf.py can be used independently. It parses the .csv file and creates configuration files (.things and .items) for OpenHAB (version 2+ only). This is of course not necessary for using spicierModbus2mqtt whit OpenHab but it removes a lot of hassle from it. I use it to create a basic working structure and then rename and rearrange the items by hand.
+
+Docker
+------
+
+spicierModbus2mqtt can be run as a docker container, using the included Dockerfile. It allows all usual configuration options, with the expectation that it's configuration is at `/app/conf/modbus2mqtt.csv`. For example:
+
+`docker build -t modbus2mqtt . && docker run -v $(pwd)/example.csv:/app/conf/modbus2mqtt.csv modbus2mqtt --tcp <modbus-tcp-host> --mqtt-host <mqtt-host>`

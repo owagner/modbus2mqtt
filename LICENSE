@@ -1,6 +1,8 @@
 The MIT License (MIT)
 
-Copyright (c) 2015 Oliver Wagner <owagner@tellerulam.com>
+Copyright (c) 2018 Max Brueggemann <mail@maxbrueggemann.de>
+
+Contains code from modbus2mqtt, copyright (c) 2015 Oliver Wagner <owagner@tellerulam.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

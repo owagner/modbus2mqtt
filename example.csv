@@ -1,0 +1,81 @@
+"type","topic","col2","col3","col4","col5","col6"
+# DO NOT REMOVE THE FIRST LINE!
+# Example register definition file.
+#
+# You need to define a Poller and then one or more References for that poller.
+# The Poller will 'poll' the slaveid and bring back 1 or more registers/bits.
+# The References must then match up with the polled range to define the topic for each.
+#################################################################################
+# Poller-object
+# Columns:
+# type, topic, slaveid, reference, size, functioncode, rate
+#  
+# Possible values for columns:
+# type: poll
+# topic: any string without spaces
+# slaveid: integer 1 to 254
+# reference: integer 0 to 65535 (Modbus references are as transmitted on the wire.
+# In the traditional numbering scheme these would have been called offsets. E. g. to
+# read 400020 you would use reference 20.)
+# size: integer 0 to 65535 (No. of registers to poll, value must not exceed the limits of Modbus of course)
+# functionscode: coil, input_status, holding_register, input_register
+# rate: float 0.0 to some really big number
+#
+# functionscode equivalents: coil, input_status, holding_register, input_register
+#                              1        2                3                4
+#
+# Example poller-object:
+# poll,someTopic,1,2,5,coil,1.0
+# Will poll states of 5 coils from slave device 1 once a second, starting at coil 2.
+#
+#################################################################################
+# Reference-Object
+# Columns:
+# type, topic, reference, rw, data type, scaling factor
+# type: ref
+# topic: any string without spaces
+# reference: integer 0 to 65535 (This is the modbus offset and should match the poller ref)
+# rw: r, w or rw
+# data type (registers only): uint16, float32BE, float32LE, uint32BE, uint32LE, string (defaults to uint16)
+# scaling factor (registers only): a factor by which the read value is multiplied before publishing to mqtt. At the moment this only works when reading from Modbus.
+#
+# Example reference-object:
+# ref,light0,2,rw
+# The state of coil 2 will be published to mqtt with the topic modbus/someTopic/state/light0
+# if column 3 contains an 'r'.
+# If you publish a value (in case of a coil: True or False) to modbus/someTopic/set/light0 and
+# column 3 contains a 'w', the new state will be written to the slave device.
+# 
+#################################################################################
+# Columns:
+# type, topic, slaveid, reference, size, functioncode, rate
+# type, topic, reference, rw, data type,        
+#
+poll,kitchen,7,0,4,coil,0.002
+ref,light0,0,rw
+ref,light1,1,rw
+ref,light2,2,rw
+ref,light3,3,rw
+
+poll,kitchen,7,0,12,holding_register,0.5
+ref,someWritableRegister,0,rw
+
+poll,heating,32,52,4,holding_register,1
+ref,temperature_pre,52,r
+ref,temperature_post,53,r
+ref,temperature_setpoint,54,rw
+ref,temperature_outdoors,55,r,int16,0.1
+ref,temperature_indoors,56,r,,0.1
+#temperature_outdoors and temperature_indoors are examples of using a scaling factor (0.1 in this case). Before publishing, the values of these registers will be multiplied by 0.1, therefore dividing them by ten.
+
+poll,ioModule,10,1,2,input_status,0
+ref,doorbell,1,r
+ref,mailbox_sensor,2,r
+
+poll,garage,1,0,10,holding_register,2
+ref,counter1,0,rw,float32BE
+#register 0 as low word, register 1 as high word
+ref,counter2,1,rw,uint16
+#treat the contents of register 1 as unsigned int. (note that counter1 overlaps counter2. This is possible and may be useful)
+ref,somestring,3,rw,string6
+#registers 3, 4 and 5 as a 6 character string
